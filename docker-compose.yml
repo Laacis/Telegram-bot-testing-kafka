@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build:
+      context: ./telegram_bot
+      dockerfile: Dockerfile
+    restart: always
+    networks:
+      - botnet
+
+  order-generator-service:
+    hostname: order-generation-service
+    build:
+      context: ./order_generation_service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    restart: always
+    networks:
+      - botnet
+
+networks:
+  botnet:
+    driver: bridge

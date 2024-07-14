@@ -73,7 +73,7 @@ func main() {
 }
 
 func callOrderGenerationService() (string, error) {
-	response, err := http.Get("http:/order_generation_service:8081/generate-order")
+	response, err := http.Get("http://order_generation_service:8081/generate-order")
 	if err != nil {
 		return "", err
 	}

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -71,5 +73,15 @@ func main() {
 }
 
 func callOrderGenerationService() (string, error) {
-	return string("Response DATA"), nil
+	response, err := http.Get("http:/order_generation_service:8081/generate-order")
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }

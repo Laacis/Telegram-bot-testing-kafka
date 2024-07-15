@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"order_generation_service/models"
+	"strconv"
 	"time"
 )
 
@@ -21,8 +23,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
-	http.HandleFunc("/generate-order", generateOrderHandler)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/generate-order", generateOrderHandler)
+	router.HandleFunc("/generate-orders/{i}", generateBulkOrders)
+	http.Handle("/", router)
 	log.Fatal(http.ListenAndServe(":8081", nil))
+}
+
+func generateBulkOrders(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+	i, err := strconv.Atoi(vars["i"])
+	if err != nil || i <= 0 {
+		http.Error(writer, "Invalid parameter", http.StatusBadRequest)
+		return
+	}
+	response := fmt.Sprintf("hit the bulk generator @ /generate-orders/%d", i)
+	writer.Write([]byte(response))
 }
 
 func generateOrderHandler(w http.ResponseWriter, r *http.Request) {

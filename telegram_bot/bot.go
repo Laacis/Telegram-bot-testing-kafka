@@ -60,6 +60,15 @@ func main() {
 				continue
 			}
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
+		case "gene5":
+			msg.Text = "executing generate orders..."
+			// call order-generation-service
+			orders, err := callOrderGenerationServiceBulk()
+			if err != nil {
+				log.Println("Error generating order:", err)
+				continue
+			}
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
 		case "status":
 			msg.Text = "Server status: "
 		default:
@@ -74,6 +83,19 @@ func main() {
 
 func callOrderGenerationService() (string, error) {
 	response, err := http.Get("http://order-generation-service:8081/generate-order")
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+func callOrderGenerationServiceBulk() (string, error) {
+	response, err := http.Get("http://order-generation-service:8081/generate-orders/5")
 	if err != nil {
 		return "", err
 	}

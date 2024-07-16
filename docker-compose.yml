@@ -20,10 +20,10 @@ services:
     networks:
       - botnet
 
-  db:
+  customers_db:
     hostname: customers-db
     image: postgres:latest
-    container_name: postgres_db
+    container_name: customers_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -31,7 +31,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - customers_db_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - botnet
@@ -57,5 +57,5 @@ networks:
     driver: bridge
 
 volumes:
-  db_data:
+  customers_db_data:
   warehouse_db_data:

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -10,13 +8,14 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"order_generation_service/models"
-	"os"
+	models "order_generation_service/models"
+	database "order_generation_service/services/database"
 	"strconv"
 	"time"
 )
 
-type Order = order_generation_service.Order
+type Order = models.Order
+type Customer = models.Customer
 
 func main() {
 	fmt.Println("Running order generator service v0.0.1")
@@ -40,29 +39,9 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid parameter", http.StatusBadRequest)
 		return
 	}
-	s, _ := fetchData()
+	s, _ := database.FetchCustomerData()
 	//response := fmt.Sprintf("/%", s)
 	writer.Write([]byte(s))
-}
-
-func fetchData() (string, error) {
-	dbUser := os.Getenv("POSTGRES_USER")
-	dbPassword := os.Getenv("POSTGRES_PASSWORD")
-	dbName := os.Getenv("POSTGRES_DB")
-	dbHost := "db"
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return "Successfully connected to the database!", nil
 }
 
 func generateOrderHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,11 +52,15 @@ func generateOrderHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error fetching data", http.StatusInternalServerError)
 		return
 	}
+	//Pseudo:
+	//connect with customers db and retrieve customer data and destinations
+
+	// connect to Warehouse db and retrieve product
 
 	// Process the data and generate an order
-	order, _ := json.Marshal(data)
 
-	w.Write(order)
+	sumUp := fmt.Sprintf("Received %d customer details.", len(data))
+	w.Write([]byte(sumUp))
 }
 
 func fetchDataFromDB() ([]Order, error) {

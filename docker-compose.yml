@@ -21,6 +21,7 @@ services:
       - botnet
 
   db:
+    hostname: customers-db
     image: postgres:latest
     container_name: postgres_db
     environment:
@@ -35,9 +36,26 @@ services:
     networks:
       - botnet
 
+  warehouse_db:
+    hostname: warehouse_db
+    image: postgres:latest
+    container_name: warehouse_db
+    environment:
+      POSTGRES_USER: ${WAREHOUSE_DB_USER}
+      POSTGRES_PASSWORD: ${WAREHOUSE_DB_PASSWORD}
+      POSTGRES_DB: ${WAREHOUSE_DB_NAME}
+    networks:
+      - botnet
+    ports:
+      - "5433:5432"
+    volumes:
+      - warehouse_db_data:/var/lib/postgresql/data
+      - ./init_warehouse.sql:/docker-entrypoint-initdb.d/init_warehouse.sql
+
 networks:
   botnet:
     driver: bridge
 
 volumes:
   db_data:
+  warehouse_db_data:

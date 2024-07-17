@@ -9,14 +9,56 @@ import (
 )
 
 type Customer = models.Customer
-
+type Product = models.Product
 type Destination = models.Destination
+
+func FetchProductData() (string, error) {
+	dbUser := os.Getenv("WAREHOUSE_DB_USER")
+	dbPassword := os.Getenv("WAREHOUSE_DB_PASSWORD")
+	dbName := os.Getenv("WAREHOUSE_DB_NAME")
+	dbHost := "warehouse_db"
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+	products, err := getProducts(db)
+
+	productReport := fmt.Sprintf("Received %d product details.\n", len(products))
+
+	return productReport, nil
+}
+
+func getProducts(db *sql.DB) ([]Product, error) {
+	rows, err := db.Query("SELECT id, product_key, name, manufacturer, thermal_category, buy_price, units_per_pallet, unit_weight_kg FROM products")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []Product
+	for rows.Next() {
+		var product Product
+		err := rows.Scan(&product.Id, &product.ProductKey, &product.Name, &product.Manufacturer, &product.ThermalCategory, &product.BuyPrice, &product.UnitsPerPallet, &product.UnitWeightKg)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+	return products, nil
+}
 
 func FetchCustomerData() (string, error) {
 	dbUser := os.Getenv("POSTGRES_USER")
 	dbPassword := os.Getenv("POSTGRES_PASSWORD")
 	dbName := os.Getenv("POSTGRES_DB")
-	dbHost := "db"
+	dbHost := "customers-db"
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {

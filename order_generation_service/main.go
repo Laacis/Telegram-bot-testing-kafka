@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -11,7 +10,6 @@ import (
 	models "order_generation_service/models"
 	database "order_generation_service/services/database"
 	"strconv"
-	"time"
 )
 
 type Order = models.Order
@@ -26,7 +24,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/generate-order", generateOrderHandler)
+	router.HandleFunc("/fetch-products", fetchProductDataHandler)
 	router.HandleFunc("/generate-orders/{i}", generateOrdersHandler).Methods("GET")
 	http.Handle("/", router)
 	log.Fatal(http.ListenAndServe(":8081", nil))
@@ -44,41 +42,19 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(s))
 }
 
-func generateOrderHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("hit the spot!")
-	data, err := fetchDataFromDB()
-	if err != nil {
-		log.Println("Error fetching data:", err)
-		http.Error(w, "Error fetching data", http.StatusInternalServerError)
-		return
-	}
+func fetchProductDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	//Pseudo:
 	//connect with customers db and retrieve customer data and destinations
 
 	// connect to Warehouse db and retrieve product
 
 	// Process the data and generate an order
-
-	sumUp := fmt.Sprintf("Received %d customer details.", len(data))
-	w.Write([]byte(sumUp))
-}
-
-func fetchDataFromDB() ([]Order, error) {
-	// Simulated data fetching logic
-	return []Order{
-		{
-			OrderId:      uuid.New(),
-			CreationTime: time.Now(),
-			CustomerId:   uuid.New(), //get from db
-			Products:     []string{"product 1", "product 2"},
-			Delivery:     false,
-		},
-		{
-			OrderId:      uuid.New(),
-			CreationTime: time.Now(),
-			CustomerId:   uuid.New(), //get from db
-			Products:     []string{"product 1", "product 3"},
-			Delivery:     true,
-		},
-	}, nil
+	data, err := database.FetchProductData()
+	if err != nil {
+		log.Println("Error fetching data:", err)
+		http.Error(w, "Error fetching data", http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(data))
 }

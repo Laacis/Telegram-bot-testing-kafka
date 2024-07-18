@@ -12,7 +12,7 @@ type Customer = models.Customer
 type Product = models.Product
 type Destination = models.Destination
 
-func FetchProductData() (string, error) {
+func FetchProductData() (*[]Product, error) {
 	dbUser := os.Getenv("WAREHOUSE_DB_USER")
 	dbPassword := os.Getenv("WAREHOUSE_DB_PASSWORD")
 	dbName := os.Getenv("WAREHOUSE_DB_NAME")
@@ -28,14 +28,43 @@ func FetchProductData() (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	products, err := getProducts(db)
-
-	productReport := fmt.Sprintf("Received %d product details.\n", len(products))
-
-	return productReport, nil
+	products, err := products(db)
+	if err != nil {
+		log.Fatalf("Error retrieving products: %v", err)
+	}
+	return &products, nil
 }
 
-func getProducts(db *sql.DB) ([]Product, error) {
+func FetchCustomerData() (*[]Customer, *[]Destination, error) {
+	dbUser := os.Getenv("POSTGRES_USER")
+	dbPassword := os.Getenv("POSTGRES_PASSWORD")
+	dbName := os.Getenv("POSTGRES_DB")
+	dbHost := "customers-db"
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	customers, err := customers(db)
+	if err != nil {
+		log.Fatalf("Error retrieving customers: %v", err)
+	}
+
+	destinations, err := destinations(db)
+	if err != nil {
+		log.Fatalf("Error retrieving destinations: %v", err)
+	}
+	return &customers, &destinations, nil
+}
+
+func products(db *sql.DB) ([]Product, error) {
 	rows, err := db.Query("SELECT id, product_key, name, manufacturer, thermal_category, buy_price, units_per_pallet, unit_weight_kg FROM products")
 	if err != nil {
 		return nil, err
@@ -54,40 +83,7 @@ func getProducts(db *sql.DB) ([]Product, error) {
 	return products, nil
 }
 
-func FetchCustomerData() (string, error) {
-	dbUser := os.Getenv("POSTGRES_USER")
-	dbPassword := os.Getenv("POSTGRES_PASSWORD")
-	dbName := os.Getenv("POSTGRES_DB")
-	dbHost := "customers-db"
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	customers, err := getCustomers(db)
-	if err != nil {
-		log.Fatalf("Error retrieving customers: %v", err)
-	}
-
-	destinations, err := getDestinations(db)
-	if err != nil {
-		log.Fatalf("Error retrieving destinations: %v", err)
-	}
-
-	reportCustomers := fmt.Sprintf("Received %d customer details.\n", len(customers))
-	reportDestinations := fmt.Sprintf("Received %d destination details.", len(destinations))
-
-	return string(reportCustomers + reportDestinations), nil
-}
-
-func getCustomers(db *sql.DB) ([]Customer, error) {
+func customers(db *sql.DB) ([]Customer, error) {
 	rows, err := db.Query("SELECT id, restaurant_id, name, contact_number, tax_number, address FROM customers")
 	if err != nil {
 		return nil, err
@@ -107,7 +103,7 @@ func getCustomers(db *sql.DB) ([]Customer, error) {
 	return customers, nil
 }
 
-func getDestinations(db *sql.DB) ([]Destination, error) {
+func destinations(db *sql.DB) ([]Destination, error) {
 	rows, err := db.Query("SELECT id, restaurant_code, restaurant_name, address, area_code, customer_id FROM  destinations")
 	if err != nil {
 		return nil, err

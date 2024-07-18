@@ -7,13 +7,9 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	models "order_generation_service/models"
 	database "order_generation_service/services/database"
 	"strconv"
 )
-
-type Order = models.Order
-type Customer = models.Customer
 
 func main() {
 	fmt.Println("Running order generator service v0.0.1")
@@ -42,7 +38,7 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(s))
 }
 
-func fetchProductDataHandler(w http.ResponseWriter, r *http.Request) {
+func fetchProductDataHandler(w http.ResponseWriter, _ *http.Request) {
 
 	//Pseudo:
 	//connect with customers db and retrieve customer data and destinations

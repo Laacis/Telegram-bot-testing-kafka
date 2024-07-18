@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	database "order_generation_service/services/database"
+	generator "order_generation_service/services/generator"
 	"strconv"
 )
 
@@ -20,7 +21,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/fetch-products", fetchProductDataHandler)
+	//router.HandleFunc("/fetch-products", fetchProductDataHandler)
 	router.HandleFunc("/generate-orders/{i}", generateOrdersHandler).Methods("GET")
 	http.Handle("/", router)
 	log.Fatal(http.ListenAndServe(":8081", nil))
@@ -33,24 +34,18 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid parameter", http.StatusBadRequest)
 		return
 	}
-	s, _ := database.FetchCustomerData()
-	//response := fmt.Sprintf("/%", s)
-	writer.Write([]byte(s))
-}
-
-func fetchProductDataHandler(w http.ResponseWriter, _ *http.Request) {
-
-	//Pseudo:
-	//connect with customers db and retrieve customer data and destinations
-
-	// connect to Warehouse db and retrieve product
-
-	// Process the data and generate an order
-	data, err := database.FetchProductData()
+	customers, destinations, err := database.FetchCustomerData()
 	if err != nil {
-		log.Println("Error fetching data:", err)
-		http.Error(w, "Error fetching data", http.StatusInternalServerError)
-		return
+		http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
 	}
-	w.Write([]byte(data))
+	products, err := database.FetchProductData()
+	if err != nil {
+		http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
+	}
+
+	orders, err := generator.GenerateOrders(customers, destinations, products, i)
+	report := fmt.Sprintf("Successfully generated %d orders.", len(*orders))
+	//res, _ := json.Marshal(*orders)
+
+	writer.Write([]byte(report))
 }

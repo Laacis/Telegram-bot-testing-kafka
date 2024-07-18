@@ -50,8 +50,8 @@ func main() {
 		// Extract the command from the Message.
 		switch update.Message.Command() {
 		case "help":
-			msg.Text = "I understand /generate and /status."
-		case "generate":
+			msg.Text = "I understand /fetchProducts /gene5 and /status."
+		case "fetchProducts":
 			msg.Text = "executing generate orders..."
 			// call order-generation-service
 			orders, err := callOrderGenerationService()
@@ -82,7 +82,7 @@ func main() {
 }
 
 func callOrderGenerationService() (string, error) {
-	response, err := http.Get("http://order-generation-service:8081/generate-order")
+	response, err := http.Get("http://order-generation-service:8081//fetch-products")
 	if err != nil {
 		return "", err
 	}

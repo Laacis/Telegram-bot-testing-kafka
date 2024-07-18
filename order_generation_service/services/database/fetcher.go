@@ -22,7 +22,7 @@ func FetchProductData() (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err = db.Ping()
 	if err != nil {
@@ -40,7 +40,7 @@ func getProducts(db *sql.DB) ([]Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var products []Product
 	for rows.Next() {
@@ -64,7 +64,7 @@ func FetchCustomerData() (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err = db.Ping()
 	if err != nil {
@@ -92,7 +92,7 @@ func getCustomers(db *sql.DB) ([]Customer, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var customers []Customer
 	for rows.Next() {
@@ -112,7 +112,7 @@ func getDestinations(db *sql.DB) ([]Destination, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var destinations []Destination
 	for rows.Next() {

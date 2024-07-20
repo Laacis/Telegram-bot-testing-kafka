@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	database "order_generation_service/services/database"
 	generator "order_generation_service/services/generator"
+	storage "order_generation_service/services/storage"
 	"strconv"
 )
 
@@ -44,8 +46,18 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	orders, err := generator.GenerateOrders(customers, destinations, products, i)
-	report := fmt.Sprintf("Successfully generated %d orders.", len(*orders))
 	//res, _ := json.Marshal(*orders)
+	// store the orders in storage
+	storage := storage.NewStorage()
+	for _, order := range *orders {
+		storage.AddOrder(order)
+	}
 
+	nextOrder, b := storage.NextOrder()
+	if b != true {
+		writer.Write([]byte("Error fetching generated Orders."))
+	}
+	report, _ := json.Marshal(nextOrder)
+	//report := fmt.Sprintf("Successfully generated %d orders.", len())
 	writer.Write([]byte(report))
 }

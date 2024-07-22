@@ -13,21 +13,9 @@ type Product = models.Product
 type Destination = models.Destination
 
 func FetchProductData() (*[]Product, error) {
-	dbUser := os.Getenv("WAREHOUSE_DB_USER")
-	dbPassword := os.Getenv("WAREHOUSE_DB_PASSWORD")
-	dbName := os.Getenv("WAREHOUSE_DB_NAME")
-	dbHost := "warehouse_db"
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	db, err := openDbConnection()
 	defer func() { _ = db.Close() }()
 
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
 	products, err := products(db)
 	if err != nil {
 		log.Fatalf("Error retrieving products: %v", err)
@@ -35,7 +23,31 @@ func FetchProductData() (*[]Product, error) {
 	return &products, nil
 }
 
-func FetchCustomerData() (*[]Customer, *[]Destination, error) {
+func FetchCustomers() (*[]Customer, error) {
+	db, err := openDbConnection()
+	defer func() { _ = db.Close() }()
+
+	customers, err := customers(db)
+	if err != nil {
+		log.Fatalf("Error retrieving customers: %v", err)
+	}
+
+	return &customers, nil
+}
+
+func FetchDestinations() (*[]Destination, error) {
+	db, err := openDbConnection()
+
+	defer func() { _ = db.Close() }()
+
+	destinations, err := destinations(db)
+	if err != nil {
+		log.Fatalf("Error retrieving destinations: %v", err)
+	}
+	return &destinations, nil
+}
+
+func openDbConnection() (*sql.DB, error) {
 	dbUser := os.Getenv("POSTGRES_USER")
 	dbPassword := os.Getenv("POSTGRES_PASSWORD")
 	dbName := os.Getenv("POSTGRES_DB")
@@ -45,23 +57,12 @@ func FetchCustomerData() (*[]Customer, *[]Destination, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() { _ = db.Close() }()
 
 	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	customers, err := customers(db)
-	if err != nil {
-		log.Fatalf("Error retrieving customers: %v", err)
-	}
-
-	destinations, err := destinations(db)
-	if err != nil {
-		log.Fatalf("Error retrieving destinations: %v", err)
-	}
-	return &customers, &destinations, nil
+	return db, err
 }
 
 func products(db *sql.DB) ([]Product, error) {

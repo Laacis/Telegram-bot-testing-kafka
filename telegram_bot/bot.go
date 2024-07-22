@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func main() {
@@ -60,15 +62,20 @@ func main() {
 				continue
 			}
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
-		case "gene5":
-			msg.Text = "executing generate orders..."
-			// call order-generation-service
-			orders, err := callOrderGenerationServiceBulk()
+		case "generate":
+			splitText := strings.Split(update.Message.Text, " ")
+			ordersCount, err := strconv.Atoi(splitText[1])
+			if err != nil {
+				log.Println("Error converting str to int", err)
+				msg.Text = "Number of orders was not a valid integer. Use /generate {integer}"
+				continue
+			}
+			generateResponse, err := callOrderGenerationServiceBulk(ordersCount)
 			if err != nil {
 				log.Println("Error generating order:", err)
 				continue
 			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, generateResponse)
 		case "status":
 			msg.Text = "Server status: "
 		default:
@@ -94,8 +101,9 @@ func callOrderGenerationService() (string, error) {
 	}
 	return string(data), nil
 }
-func callOrderGenerationServiceBulk() (string, error) {
-	response, err := http.Get("http://order-generation-service:8081/generate-orders/5")
+
+func callOrderGenerationServiceBulk(i int) (string, error) {
+	response, err := http.Get("http://order-generation-service:8081/generate-orders/" + strconv.Itoa(i))
 	if err != nil {
 		return "", err
 	}

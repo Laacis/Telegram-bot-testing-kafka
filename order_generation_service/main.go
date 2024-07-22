@@ -1,18 +1,33 @@
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
+	order_generation_service "order_generation_service/models"
 	database "order_generation_service/services/database"
 	generator "order_generation_service/services/generator"
 	storage "order_generation_service/services/storage"
 	"strconv"
 )
+
+type Destination = order_generation_service.Destination
+type Product = order_generation_service.Product
+
+var keep = storage.NewStorage()
+var useInMemory bool
+
+// TODO make in-memory storages
+var customersInMemory []Destination
+var warehouseInMemory []Product
+
+func init() {
+	flag.BoolVar(&useInMemory, "inmemory", false, "Use in-memory storage instead of database")
+}
 
 func main() {
 	fmt.Println("Running order generator service v0.0.1")
@@ -20,6 +35,11 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalf("Error loading .env file")
+	}
+	flag.Parse()
+	if useInMemory == true {
+		customersInMemory = make([]Destination, 0)
+		warehouseInMemory = make([]Product, 0)
 	}
 
 	router := mux.NewRouter()
@@ -46,18 +66,11 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	orders, err := generator.GenerateOrders(customers, destinations, products, i)
-	//res, _ := json.Marshal(*orders)
-	// store the orders in storage
-	storage := storage.NewStorage()
+
 	for _, order := range *orders {
-		storage.AddOrder(order)
+		keep.AddOrder(order)
 	}
 
-	nextOrder, b := storage.NextOrder()
-	if b != true {
-		writer.Write([]byte("Error fetching generated Orders."))
-	}
-	report, _ := json.Marshal(nextOrder)
-	//report := fmt.Sprintf("Successfully generated %d orders.", len())
+	report := fmt.Sprintf("Successfully generated %d orders.", keep.Length)
 	writer.Write([]byte(report))
 }

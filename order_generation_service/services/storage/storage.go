@@ -14,19 +14,16 @@ type OrderStorageInterface interface {
 }
 type OrderStorage struct {
 	orders []Order
-	Length int
 }
 
 func NewStorage() *OrderStorage {
 	return &OrderStorage{
 		orders: make([]Order, 0),
-		Length: 0,
 	}
 }
 
 func (s *OrderStorage) AddOrder(order Order) {
 	s.orders = append(s.orders, order)
-	s.Length++
 }
 
 func (s *OrderStorage) NextOrder() (Order, bool) {
@@ -35,6 +32,9 @@ func (s *OrderStorage) NextOrder() (Order, bool) {
 	}
 	nextOrder := s.orders[0]
 	s.orders = s.orders[1:]
-	s.Length--
 	return nextOrder, true
+}
+
+func (s *OrderStorage) Length() int {
+	return len(s.orders)
 }

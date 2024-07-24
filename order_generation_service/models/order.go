@@ -14,5 +14,4 @@ type Order struct {
 	Products        []Product `json:"products"`
 	IsDelivery      bool      `json:"isDelivery"`
 	DeliveryAddress string    `json:"delivery_address"`
-	BillingAddress  string    `json:"billing_address"`
 }

@@ -8,22 +8,24 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	order_generation_service "order_generation_service/models"
+	models "order_generation_service/models"
 	database "order_generation_service/services/database"
 	generator "order_generation_service/services/generator"
 	storage "order_generation_service/services/storage"
+	inmemory "order_generation_service/services/storage/in-memory"
 	"strconv"
 )
 
-type Destination = order_generation_service.Destination
-type Product = order_generation_service.Product
+type Destination = models.Destination
+type Product = models.Product
+type Customer = models.Customer
 
 var keep = storage.NewStorage()
 var useInMemory bool
 
 // TODO make in-memory storages
-var customersInMemory []Destination
-var warehouseInMemory []Product
+var destinationsInMemory = inmemory.NewInMemoryStorage[Destination]()
+var productsInMemory = inmemory.NewInMemoryStorage[Product]()
 
 func init() {
 	flag.BoolVar(&useInMemory, "inmemory", false, "Use in-memory storage instead of database")
@@ -37,9 +39,9 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 	flag.Parse()
-	if useInMemory == true {
-		customersInMemory = make([]Destination, 0)
-		warehouseInMemory = make([]Product, 0)
+	if useInMemory {
+		//populate inMemory storages
+
 	}
 
 	router := mux.NewRouter()
@@ -56,16 +58,28 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid parameter", http.StatusBadRequest)
 		return
 	}
-	customers, destinations, err := database.FetchCustomerData()
-	if err != nil {
-		http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
-	}
-	products, err := database.FetchProductData()
-	if err != nil {
-		http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
+
+	var destinations *[]Destination = nil
+	var products *[]Product = nil
+
+	if useInMemory {
+		destinations = inMemory.Destinations()
+		products = inMemory.Products()
+	} else {
+		destinations, err = database.FetchDestinations()
+		if err != nil {
+			http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
+		}
+		products, err = database.FetchProductData()
+		if err != nil {
+			http.Error(writer, "Error fetching data from customers db", http.StatusInternalServerError)
+		}
 	}
 
-	orders, err := generator.GenerateOrders(customers, destinations, products, i)
+	orders, err := generator.GenerateOrders(destinations, products, i)
+	if err != nil {
+		http.Error(writer, "Error generating orders", http.StatusInternalServerError)
+	}
 
 	for _, order := range *orders {
 		keep.AddOrder(order)

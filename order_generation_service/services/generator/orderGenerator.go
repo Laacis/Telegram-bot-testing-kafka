@@ -15,7 +15,7 @@ type Order = models.Order
 
 const maxProducts = 10
 
-func GenerateOrders(c *[]Customer, d *[]Destination, p *[]Product, numberOfOrders int) (*[]Order, error) {
+func GenerateOrders(d *[]Destination, p *[]Product, numberOfOrders int) (*[]Order, error) {
 	var orders []Order
 	source := rand.NewSource(time.Now().UnixNano())
 	random := rand.New(source)
@@ -37,7 +37,6 @@ func GenerateOrders(c *[]Customer, d *[]Destination, p *[]Product, numberOfOrder
 			RestaurantName: destination.RestaurantName,
 			Products:       products,
 			IsDelivery:     i%5 != 0, //every 5th to be not delivery
-			BillingAddress: billingAddress(c, destination.CustomerId),
 		}
 		orders = append(orders, order)
 	}

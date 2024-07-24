@@ -15,7 +15,7 @@ func loadSQLFile[T any](filename string, tableName string, storage *InMemoryStor
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	re := regexp.MustCompile(pattern)
 	var capture bool
@@ -41,15 +41,7 @@ func loadSQLFile[T any](filename string, tableName string, storage *InMemoryStor
 }
 
 func parseStatement[T any](line string, storage *InMemoryStorage[T], parseFunc func([]string) (T, error), re *regexp.Regexp) {
-	//line = strings.TrimSpace(line)
-	//line = strings.Trim(line, ";")
-	//line = strings.Trim(line, " (),")
-	//values := strings.Split(line, "',")
-	//parts := make([]string, 0)
-	//for _, value := range values {
-	//	value = strings.Trim(value, " '")
-	//	parts = append(parts, value)
-	//}
+
 	matches := re.FindStringSubmatch(line)
 	if matches != nil {
 		parts := matches[1:]

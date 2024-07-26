@@ -18,7 +18,6 @@ import (
 
 type Destination = models.Destination
 type Product = models.Product
-type Customer = models.Customer
 
 var keep = storage.NewStorage()
 var useInMemory bool
@@ -26,6 +25,12 @@ var useInMemory bool
 // TODO make in-memory storages
 var destinationsInMemory = inmemory.NewInMemoryStorage[Destination]()
 var productsInMemory = inmemory.NewInMemoryStorage[Product]()
+
+const destinationPattern = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+)\)`
+const productPattern = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
+
+const customersSqlInitFileName = "./sql/init.sql"
+const warehouseSqlInitFileName = "./sql/init_warehouse.sql"
 
 func init() {
 	flag.BoolVar(&useInMemory, "inmemory", false, "Use in-memory storage instead of database")
@@ -40,8 +45,19 @@ func main() {
 	}
 	flag.Parse()
 	if useInMemory {
+		fmt.Println("inmemory confirmed")
 		//populate inMemory storages
-
+		err = inmemory.LoadSQLFile(customersSqlInitFileName, "destinations", destinationsInMemory, inmemory.ParseDestination, destinationPattern)
+		if err != nil {
+			log.Fatalf("Failed to load SQL file: %v", err)
+		}
+		fmt.Println("destinations fetched from inmemory")
+		err = inmemory.LoadSQLFile(warehouseSqlInitFileName, "products", productsInMemory, inmemory.ParseProduct, productPattern)
+		if err != nil {
+			log.Fatalf("Failed to load SQL file: %v", err)
+		}
+		fmt.Println("products fetched from inmemory")
+		fmt.Println("In-memory storages successfully populated with data")
 	}
 
 	router := mux.NewRouter()
@@ -63,8 +79,8 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	var products *[]Product = nil
 
 	if useInMemory {
-		destinations = inMemory.Destinations()
-		products = inMemory.Products()
+		destinations = destinationsInMemory.AllRecords()
+		products = productsInMemory.AllRecords()
 	} else {
 		destinations, err = database.FetchDestinations()
 		if err != nil {

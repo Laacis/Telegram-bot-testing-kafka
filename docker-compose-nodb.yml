@@ -14,11 +14,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
-    restart: always
-    command:
-      - ["./order-generator-service", "-inmemory=true"]
+   # restart: always
+    command: ["./main", "-inmemory"]
     networks:
       - botnet
+#    volumes:
+#      - ../init.sql:/app/init.sql
 
 #  customers_db:
 #    hostname: customers-db

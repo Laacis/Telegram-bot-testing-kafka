@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func loadSQLFile[T any](filename string, tableName string, storage *InMemoryStorage[T], parseFunc func([]string) (T, error), pattern string) error {
+func LoadSQLFile[T any](filename string, tableName string, storage *InMemoryStorage[T], parseFunc func([]string) (T, error), pattern string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func parseStatement[T any](line string, storage *InMemoryStorage[T], parseFunc f
 	}
 }
 
-func parseDestination(parts []string) (models.Destination, error) {
+func ParseDestination(parts []string) (models.Destination, error) {
 	customerID, err := strconv.Atoi(parts[4])
 	if err != nil {
 		return models.Destination{}, err
@@ -69,7 +69,7 @@ func parseDestination(parts []string) (models.Destination, error) {
 	}, nil
 }
 
-func parseProduct(parts []string) (models.Product, error) {
+func ParseProduct(parts []string) (models.Product, error) {
 	bPrice, _ := strconv.ParseFloat(parts[4], 64)
 	unitCount, _ := strconv.Atoi(parts[5])
 	unitWeight, _ := strconv.Atoi(parts[6])

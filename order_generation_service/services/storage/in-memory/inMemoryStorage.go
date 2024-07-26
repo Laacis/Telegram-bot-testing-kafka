@@ -20,8 +20,8 @@ func (s *InMemoryStorage[T]) Add(item T) {
 	s.items = append(s.items, item)
 }
 
-func (s *InMemoryStorage[T]) AllRecords() []T {
-	return s.items
+func (s *InMemoryStorage[T]) AllRecords() *[]T {
+	return &s.items
 }
 
 func (s *InMemoryStorage[T]) Length() int {

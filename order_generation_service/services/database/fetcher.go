@@ -6,14 +6,18 @@ import (
 	"log"
 	models "order_generation_service/models"
 	"os"
+	"strings"
 )
 
 type Customer = models.Customer
 type Product = models.Product
 type Destination = models.Destination
 
+const customersDbPrefix = "CUSTOMERS_DB"
+const warehouseDbPrefix = "WAREHOUSE_DB"
+
 func FetchProductData() (*[]Product, error) {
-	db, err := openDbConnection()
+	db, err := openDbConnection(warehouseDbPrefix)
 	defer func() { _ = db.Close() }()
 
 	products, err := products(db)
@@ -24,7 +28,7 @@ func FetchProductData() (*[]Product, error) {
 }
 
 func FetchCustomers() (*[]Customer, error) {
-	db, err := openDbConnection()
+	db, err := openDbConnection(customersDbPrefix)
 	defer func() { _ = db.Close() }()
 
 	customers, err := customers(db)
@@ -36,7 +40,7 @@ func FetchCustomers() (*[]Customer, error) {
 }
 
 func FetchDestinations() (*[]Destination, error) {
-	db, err := openDbConnection()
+	db, err := openDbConnection(customersDbPrefix)
 
 	defer func() { _ = db.Close() }()
 
@@ -47,12 +51,16 @@ func FetchDestinations() (*[]Destination, error) {
 	return &destinations, nil
 }
 
-func openDbConnection() (*sql.DB, error) {
-	dbUser := os.Getenv("POSTGRES_USER")
-	dbPassword := os.Getenv("POSTGRES_PASSWORD")
-	dbName := os.Getenv("POSTGRES_DB")
-	dbHost := "customers-db"
+func openDbConnection(dbPrefix string) (*sql.DB, error) {
+	dbUserString := fmt.Sprintf("%s_USER", dbPrefix)
+	dbUser := os.Getenv(dbUserString)
+	dbPasswordString := fmt.Sprintf("%s_PASSWORD", dbPrefix)
+	dbPassword := os.Getenv(dbPasswordString)
+	dbNameString := fmt.Sprintf("%s_NAME", dbPrefix)
+	dbName := os.Getenv(dbNameString)
+	dbHost := strings.ToLower(dbPrefix)
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost)
+	fmt.Println(connStr)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -66,7 +74,7 @@ func openDbConnection() (*sql.DB, error) {
 }
 
 func products(db *sql.DB) ([]Product, error) {
-	rows, err := db.Query("SELECT id, product_key, name, manufacturer, thermal_category, buy_price, units_per_pallet, unit_weight_kg FROM products")
+	rows, err := db.Query("SELECT product_key, name, manufacturer, thermal_category, buy_price, units_per_pallet, unit_weight_kg FROM products")
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +83,7 @@ func products(db *sql.DB) ([]Product, error) {
 	var products []Product
 	for rows.Next() {
 		var product Product
-		err := rows.Scan(&product.Id, &product.ProductKey, &product.Name, &product.Manufacturer, &product.ThermalCategory, &product.BuyPrice, &product.UnitsPerPallet, &product.UnitWeightKg)
+		err := rows.Scan(&product.ProductKey, &product.Name, &product.Manufacturer, &product.ThermalCategory, &product.BuyPrice, &product.UnitsPerPallet, &product.UnitWeightKg)
 		if err != nil {
 			return nil, err
 		}

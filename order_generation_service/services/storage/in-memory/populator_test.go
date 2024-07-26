@@ -25,7 +25,7 @@ func TestLoadSQLFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temporary file: %v", err)
 	}
-	defer os.Remove(tmpfile.Name()) // Clean up
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	_, err = tmpfile.WriteString(sqlContent)
 	if err != nil {

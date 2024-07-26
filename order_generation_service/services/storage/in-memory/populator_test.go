@@ -42,13 +42,13 @@ func TestLoadSQLFile(t *testing.T) {
 	storageTwo := NewInMemoryStorage[models.Product]()
 
 	// Load data from the temporary SQL file
-	err = loadSQLFile(tmpfile.Name(), "destinations", storage, parseDestination, destinationPattern)
+	err = LoadSQLFile(tmpfile.Name(), "destinations", storage, ParseDestination, destinationPattern)
 	if err != nil {
 		t.Fatalf("Failed to load SQL file: %v", err)
 	}
 
 	// Load data from the temporary SQL file
-	err = loadSQLFile(tmpfile.Name(), "products", storageTwo, parseProduct, productPattern)
+	err = LoadSQLFile(tmpfile.Name(), "products", storageTwo, ParseProduct, productPattern)
 	if err != nil {
 		t.Fatalf("Failed to load SQL file: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestLoadSQLFile(t *testing.T) {
 		t.Fatalf("Expected %d records, got %d", len(expected), storage.Length())
 	}
 
-	for i, dest := range storage.AllRecords() {
+	for i, dest := range *storage.AllRecords() {
 		if dest != expected[i] {
 			t.Errorf("Expected %+v, got %+v", expected[i], dest)
 		}

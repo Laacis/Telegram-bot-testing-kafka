@@ -26,11 +26,12 @@ var useInMemory bool
 var destinationsInMemory = inmemory.NewInMemoryStorage[Destination]()
 var productsInMemory = inmemory.NewInMemoryStorage[Product]()
 
-const destinationPattern = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+)\)`
-const productPattern = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
-
-const customersSqlInitFileName = "./sql/init.sql"
-const warehouseSqlInitFileName = "./sql/init_warehouse.sql"
+const (
+	destinationPattern       = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+)\)`
+	productPattern           = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
+	customersSqlInitFileName = "./sql/init.sql"
+	warehouseSqlInitFileName = "./sql/init_warehouse.sql"
+)
 
 func init() {
 	flag.BoolVar(&useInMemory, "inmemory", false, "Use in-memory storage instead of database")
@@ -100,7 +101,20 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	for _, order := range *orders {
 		keep.AddOrder(order)
 	}
-
-	report := fmt.Sprintf("Successfully generated %d orders.", keep.Length)
-	writer.Write([]byte(report))
+	counter := 0
+	records := keep.Length()
+	//for {
+	//	_, ok := keep.NextOrder()
+	//	if ok == false {
+	//		break
+	//	}
+	//	counter++
+	//}
+	//report := fmt.Sprintf("Successfully generated %d orders.", keep.Length)
+	//orderToReport, _ := keep.NextOrder()
+	//
+	//res, _ := json.Marshal(orderToReport)
+	//writer.Write(res)
+	finalStr := fmt.Sprintf("number of records: %d, actual number of orders:%d", records, counter)
+	writer.Write([]byte(finalStr))
 }

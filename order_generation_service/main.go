@@ -101,20 +101,8 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	for _, order := range *orders {
 		keep.AddOrder(order)
 	}
-	counter := 0
 	records := keep.Length()
-	//for {
-	//	_, ok := keep.NextOrder()
-	//	if ok == false {
-	//		break
-	//	}
-	//	counter++
-	//}
-	//report := fmt.Sprintf("Successfully generated %d orders.", keep.Length)
-	//orderToReport, _ := keep.NextOrder()
-	//
-	//res, _ := json.Marshal(orderToReport)
-	//writer.Write(res)
-	finalStr := fmt.Sprintf("number of records: %d, actual number of orders:%d", records, counter)
+
+	finalStr := fmt.Sprintf("number of records: %d generated", records)
 	writer.Write([]byte(finalStr))
 }

@@ -52,16 +52,25 @@ func main() {
 		// Extract the command from the Message.
 		switch update.Message.Command() {
 		case "help":
-			msg.Text = "I understand /fetchProducts /gene5 and /status."
-		case "fetchProducts":
+			msg.Text = "I understand /producerUp /producerDown /generate n and /status."
+		case "producerUp":
 			msg.Text = "executing generate orders..."
 			// call order-generation-service
-			orders, err := callOrderGenerationService()
+			response, err := kafkaManagerProducerUp()
 			if err != nil {
-				log.Println("Error generating order:", err)
+				log.Println("Error running producer on kafka manager:", err)
 				continue
 			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
+		case "producerDown":
+			msg.Text = "executing generate orders..."
+			// call order-generation-service
+			response, err := kafkaManagerProducerUp()
+			if err != nil {
+				log.Println("Error running producer on kafka manager:", err)
+				continue
+			}
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 		case "generate":
 			splitText := strings.Split(update.Message.Text, " ")
 			ordersCount, err := strconv.Atoi(splitText[1])
@@ -88,8 +97,8 @@ func main() {
 	}
 }
 
-func callOrderGenerationService() (string, error) {
-	response, err := http.Get("http://order-generation-service:8081//fetch-products")
+func kafkaManagerProducerUp() (string, error) {
+	response, err := http.Get("http://kafka_manager:8082//producer/up")
 	if err != nil {
 		return "", err
 	}

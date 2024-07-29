@@ -2,7 +2,10 @@ module kafka_manager
 
 go 1.22.4
 
-require github.com/IBM/sarama v1.43.2
+require (
+	github.com/IBM/sarama v1.43.2
+	github.com/gorilla/mux v1.8.1
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

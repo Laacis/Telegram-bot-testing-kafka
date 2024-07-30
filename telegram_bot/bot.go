@@ -52,7 +52,7 @@ func main() {
 		// Extract the command from the Message.
 		switch update.Message.Command() {
 		case "help":
-			msg.Text = "I understand /producerUp /producerDown /generate n and /status."
+			msg.Text = "I understand /producerUp /producerDown /producerStatus /generate n and /status."
 		case "producerUp":
 			msg.Text = "executing generate orders..."
 			// call order-generation-service
@@ -65,7 +65,16 @@ func main() {
 		case "producerDown":
 			msg.Text = "executing generate orders..."
 			// call order-generation-service
-			response, err := kafkaManagerProducerUp()
+			response, err := kafkaManagerProducerDown()
+			if err != nil {
+				log.Println("Error running producer on kafka manager:", err)
+				continue
+			}
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
+		case "producerStatus":
+			msg.Text = "executing generate orders..."
+			// call order-generation-service
+			response, err := kafkaManagerProducerStatus()
 			if err != nil {
 				log.Println("Error running producer on kafka manager:", err)
 				continue
@@ -98,7 +107,35 @@ func main() {
 }
 
 func kafkaManagerProducerUp() (string, error) {
-	response, err := http.Get("http://kafka_manager:8082//producer/up")
+	response, err := http.Get("http://kafka_manager:8082/producer/up")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func kafkaManagerProducerDown() (string, error) {
+	response, err := http.Get("http://kafka_manager:8082/producer/down")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func kafkaManagerProducerStatus() (string, error) {
+	response, err := http.Get("http://kafka_manager:8082/producer/status")
 	if err != nil {
 		return "", err
 	}

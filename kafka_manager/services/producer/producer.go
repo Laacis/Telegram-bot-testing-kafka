@@ -18,3 +18,26 @@ func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
 	}
 	return &KafkaProducer{producer: producer}, nil
 }
+
+func (prod *KafkaProducer) SendMessage(topic, message string) error {
+	messageToSend := &sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.StringEncoder(message),
+	}
+	_, _, err := prod.producer.SendMessage(messageToSend)
+	return err
+}
+
+func (prod *KafkaProducer) Close() error {
+	return prod.producer.Close()
+}
+
+func (prod *KafkaProducer) SendBytes(message []byte, topic string) interface{} {
+	msg := &sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.ByteEncoder(message),
+	}
+
+	_, _, err := prod.producer.SendMessage(msg)
+	return err
+}

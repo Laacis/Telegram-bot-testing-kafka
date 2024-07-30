@@ -54,7 +54,6 @@ func main() {
 		case "help":
 			msg.Text = "I understand /producerUp /producerDown /producerStatus /generate n and /status."
 		case "producerUp":
-			msg.Text = "executing generate orders..."
 			// call order-generation-service
 			response, err := kafkaManagerProducerUp()
 			if err != nil {
@@ -63,7 +62,6 @@ func main() {
 			}
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 		case "producerDown":
-			msg.Text = "executing generate orders..."
 			// call order-generation-service
 			response, err := kafkaManagerProducerDown()
 			if err != nil {
@@ -72,11 +70,17 @@ func main() {
 			}
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 		case "producerStatus":
-			msg.Text = "executing generate orders..."
 			// call order-generation-service
 			response, err := kafkaManagerProducerStatus()
 			if err != nil {
 				log.Println("Error running producer on kafka manager:", err)
+				continue
+			}
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
+		case "sendAll":
+			response, err := ordersSendAll()
+			if err != nil {
+				log.Println("Error sending orders:", err)
 				continue
 			}
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
@@ -88,7 +92,7 @@ func main() {
 				msg.Text = "Number of orders was not a valid integer. Use /generate {integer}"
 				continue
 			}
-			generateResponse, err := callOrderGenerationServiceBulk(ordersCount)
+			generateResponse, err := ordersGenerate(ordersCount)
 			if err != nil {
 				log.Println("Error generating order:", err)
 				continue
@@ -148,8 +152,22 @@ func kafkaManagerProducerStatus() (string, error) {
 	return string(data), nil
 }
 
-func callOrderGenerationServiceBulk(i int) (string, error) {
+func ordersGenerate(i int) (string, error) {
 	response, err := http.Get("http://order-generation-service:8081/generate-orders/" + strconv.Itoa(i))
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func ordersSendAll() (string, error) {
+	response, err := http.Get("http://order-generation-service:8081/orders/send/all")
 	if err != nil {
 		return "", err
 	}

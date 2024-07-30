@@ -18,40 +18,63 @@ services:
     command: ["./main", "-inmemory"]
     networks:
       - botnet
-#    volumes:
-#      - ../init.sql:/app/init.sql
 
-#  customers_db:
-#    hostname: customers-db
-#    image: postgres:latest
-#    container_name: customers_db
-#    environment:
-#      POSTGRES_USER: ${POSTGRES_USER}
-#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#      POSTGRES_DB: ${POSTGRES_DB}
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - customers_db_data:/var/lib/postgresql/data
-#      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-#    networks:
-#      - botnet
 
-#  warehouse_db:
-#    hostname: warehouse_db
-#    image: postgres:latest
-#    container_name: warehouse_db
-#    environment:
-#      POSTGRES_USER: ${WAREHOUSE_DB_USER}
-#      POSTGRES_PASSWORD: ${WAREHOUSE_DB_PASSWORD}
-#      POSTGRES_DB: ${WAREHOUSE_DB_NAME}
-#    networks:
-#      - botnet
-#    ports:
-#      - "5433:5432"
+  kafka_manager:
+    hostname: customers-manager
+    build:
+      context: ./kafka_manager
+      dockerfile: Dockerfile
+    restart: always
+    networks:
+      - botnet
+    ports:
+      - "8082:8082"
+  zookeeper:
+    restart: always
+    image: docker.io/bitnami/zookeeper:3.8
+    ports:
+      - "2181:2181"
 #    volumes:
-#      - warehouse_db_data:/var/lib/postgresql/data
-#      - ./init_warehouse.sql:/docker-entrypoint-initdb.d/init_warehouse.sql
+#      - "zookeeper-volume:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - botnet
+
+
+  kafka:
+    image: 'bitnami/kafka:3.3.1'
+    container_name: kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=r4zt_wrqTRuT7W2NJsB_GA
+    ports:
+      - "9192:9092"
+    networks:
+      - botnet
+    depends_on:
+      - zookeeper
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: 'provectuslabs/kafka-ui:latest'
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_NAME=r4zt_wrqTRuT7W2NJsB_GA
+    networks:
+      - botnet
 
 networks:
   botnet:

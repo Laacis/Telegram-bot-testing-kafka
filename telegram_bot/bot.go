@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"io"
@@ -62,16 +63,16 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
 		case "help":
 			response = handleHelp()
 		case "producerUp", "producerDown", "producerStatus", "sendAll":
-			response, err = commonCalls(command)
+			response, err = executeCommand(command)
 		case "generate":
 			var numberOfOrders int
-			command, numberOfOrders, err = commandIntoArguments(update.Message.Text)
+			numberOfOrders, err = splitArgumentString(update.Message.Text)
 			if err != nil {
 				continue
 			}
-			response, err = commonCalls(command, numberOfOrders)
+			response, err = executeCommand(command, numberOfOrders)
 		case "status":
-			response = "Server status: "
+			response = "Server status: " //TODO
 		default:
 			response = "Unknown command"
 		}
@@ -88,15 +89,14 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
 	}
 }
 
-func commandIntoArguments(message string) (string, int, error) {
+func splitArgumentString(message string) (int, error) {
 	splitText := strings.Split(message, " ")
-	command := splitText[0]
 	ordersCount, err := strconv.Atoi(splitText[1])
 	if err != nil {
 		log.Println("Error converting str to int", err)
-		return "", 0, err
+		return 0, err
 	}
-	return command, ordersCount, nil
+	return ordersCount, nil
 }
 
 func handleHelp() string {
@@ -118,7 +118,7 @@ func loadEnv() {
 	}
 }
 
-func commonCalls(command string, i ...int) (string, error) {
+func executeCommand(command string, i ...int) (string, error) {
 	var endpoint string
 	switch command {
 	case "producerUp":
@@ -130,24 +130,15 @@ func commonCalls(command string, i ...int) (string, error) {
 	case "sendAll":
 		endpoint = orderServiceSendAllEndpoint
 	case "generate":
+		if len(i) == 0 {
+			return "", fmt.Errorf("missing parameter for generate command")
+		}
 		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(i[0])
+	default:
+		return "", fmt.Errorf("unknown command: %s", command)
 	}
+
 	response, err := http.Get(endpoint)
-
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func ordersGenerate(i int) (string, error) {
-	response, err := http.Get(orderServiceGenerateEndpoint + strconv.Itoa(i))
 	if err != nil {
 		return "", err
 	}

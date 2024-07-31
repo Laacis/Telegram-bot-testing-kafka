@@ -69,7 +69,7 @@ func populateInMemoryStorage() {
 
 func sendOrdersHandler(writer http.ResponseWriter, _ *http.Request) {
 	if keep.Length() == 0 {
-		http.Error(writer, "No orders to send", http.StatusInternalServerError)
+		http.Error(writer, "Storage empty, no orders to send", http.StatusInternalServerError)
 		return
 	}
 
@@ -149,6 +149,6 @@ func generateOrdersHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 	records := keep.Length()
 
-	finalStr := fmt.Sprintf("Orders: %d generated", records)
+	finalStr := fmt.Sprintf("Report: %d orders generated", records)
 	writer.Write([]byte(finalStr))
 }

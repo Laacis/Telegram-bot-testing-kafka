@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"io"
@@ -12,134 +11,129 @@ import (
 	"strings"
 )
 
+const (
+	botTimeout                   = 60
+	kafkaProducerUpEndpoint      = "http://kafka_manager:8082/producer/up"
+	kafkaProducerDownEndpoint    = "http://kafka_manager:8082/producer/down"
+	kafkaProducerStatusEndpoint  = "http://kafka_manager:8082/producer/status"
+	orderServiceGenerateEndpoint = "http://order-service:8081/generate-orders/"
+	orderServiceSendAllEndpoint  = "http://order-service:8081/orders/send/all"
+)
+
+var debugBot = true
+
 func main() {
-	fmt.Println("V1.0")
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
+	loadEnv()
+	botToken := token()
+	bot := botSetup(botToken)
+	u := botConfigUpdateTimeout()
+	updates := bot.GetUpdatesChan(u)
+	updateHandler(updates, bot)
+}
 
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Fatalf("TELEGRAM_BOT_TOKEN must be set")
-	}
+func botConfigUpdateTimeout() tgbotapi.UpdateConfig {
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = botTimeout
+	return u
+}
 
+func botSetup(botToken string) *tgbotapi.BotAPI {
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Panic(err)
 	}
-
-	bot.Debug = true
-
+	bot.Debug = debugBot
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+	return bot
+}
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := bot.GetUpdatesChan(u)
-
+func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
 	for update := range updates {
-		if update.Message == nil { // ignore any non-Message updates
-			continue
-		}
-
-		if !update.Message.IsCommand() { // ignore any non-command Messages
+		if update.Message == nil || !update.Message.IsCommand() {
 			continue
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+		command := update.Message.Command()
+		var response string
+		var err error
 
-		// Extract the command from the Message.
-		switch update.Message.Command() {
+		switch command {
 		case "help":
-			msg.Text = "I understand /producerUp /producerDown /producerStatus /generate n and /status."
-		case "producerUp":
-			// call order-generation-service
-			response, err := kafkaManagerProducerUp()
-			if err != nil {
-				log.Println("Error running producer on kafka manager:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		case "producerDown":
-			// call order-generation-service
-			response, err := kafkaManagerProducerDown()
-			if err != nil {
-				log.Println("Error running producer on kafka manager:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		case "producerStatus":
-			// call order-generation-service
-			response, err := kafkaManagerProducerStatus()
-			if err != nil {
-				log.Println("Error running producer on kafka manager:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		case "sendAll":
-			response, err := ordersSendAll()
-			if err != nil {
-				log.Println("Error sending orders:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
+			response = handleHelp()
+		case "producerUp", "producerDown", "producerStatus", "sendAll":
+			response, err = commonCalls(command)
 		case "generate":
-			splitText := strings.Split(update.Message.Text, " ")
-			ordersCount, err := strconv.Atoi(splitText[1])
+			var numberOfOrders int
+			command, numberOfOrders, err = commandIntoArguments(update.Message.Text)
 			if err != nil {
-				log.Println("Error converting str to int", err)
-				msg.Text = "Number of orders was not a valid integer. Use /generate {integer}"
 				continue
 			}
-			generateResponse, err := ordersGenerate(ordersCount)
-			if err != nil {
-				log.Println("Error generating order:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, generateResponse)
+			response, err = commonCalls(command, numberOfOrders)
 		case "status":
-			msg.Text = "Server status: "
+			response = "Server status: "
 		default:
-			msg.Text = "Unknown command"
+			response = "Unknown command"
 		}
 
+		if err != nil {
+			log.Printf("Error handling command: %s: %v", command, err)
+			response = "An error occurred while handling your request" + err.Error()
+		}
+
+		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
 		if _, err := bot.Send(msg); err != nil {
 			log.Panic(err)
 		}
 	}
 }
 
-func kafkaManagerProducerUp() (string, error) {
-	response, err := http.Get("http://kafka_manager:8082/producer/up")
+func commandIntoArguments(message string) (string, int, error) {
+	splitText := strings.Split(message, " ")
+	command := splitText[0]
+	ordersCount, err := strconv.Atoi(splitText[1])
 	if err != nil {
-		return "", err
+		log.Println("Error converting str to int", err)
+		return "", 0, err
 	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+	return command, ordersCount, nil
 }
 
-func kafkaManagerProducerDown() (string, error) {
-	response, err := http.Get("http://kafka_manager:8082/producer/down")
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+func handleHelp() string {
+	return "I understand /producerUp /producerDown /producerStatus '/generate n' and /status."
 }
 
-func kafkaManagerProducerStatus() (string, error) {
-	response, err := http.Get("http://kafka_manager:8082/producer/status")
+func token() string {
+	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	if botToken == "" {
+		log.Fatalf("TELEGRAM_BOT_TOKEN must be set")
+	}
+	return botToken
+}
+
+func loadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
+
+func commonCalls(command string, i ...int) (string, error) {
+	var endpoint string
+	switch command {
+	case "producerUp":
+		endpoint = kafkaProducerUpEndpoint
+	case "producerDown":
+		endpoint = kafkaProducerDownEndpoint
+	case "producerStatus":
+		endpoint = kafkaProducerStatusEndpoint
+	case "sendAll":
+		endpoint = orderServiceSendAllEndpoint
+	case "generate":
+		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(i[0])
+	}
+	response, err := http.Get(endpoint)
+
 	if err != nil {
 		return "", err
 	}
@@ -153,21 +147,7 @@ func kafkaManagerProducerStatus() (string, error) {
 }
 
 func ordersGenerate(i int) (string, error) {
-	response, err := http.Get("http://order-generation-service:8081/generate-orders/" + strconv.Itoa(i))
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func ordersSendAll() (string, error) {
-	response, err := http.Get("http://order-generation-service:8081/orders/send/all")
+	response, err := http.Get(orderServiceGenerateEndpoint + strconv.Itoa(i))
 	if err != nil {
 		return "", err
 	}

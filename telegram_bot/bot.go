@@ -1,41 +1,20 @@
 package main
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-	"io"
 	"log"
-	"net/http"
-	"os"
-	"strconv"
 	"strings"
+	commands "telegram_bot/commands"
+	config "telegram_bot/config"
 )
-
-const (
-	botTimeout                   = 60
-	kafkaProducerUpEndpoint      = "http://kafka_manager:8082/producer/up"
-	kafkaProducerDownEndpoint    = "http://kafka_manager:8082/producer/down"
-	kafkaProducerStatusEndpoint  = "http://kafka_manager:8082/producer/status"
-	orderServiceGenerateEndpoint = "http://order-service:8081/generate-orders/"
-	orderServiceSendAllEndpoint  = "http://order-service:8081/orders/send/all"
-)
-
-var debugBot = true
 
 func main() {
 	loadEnv()
-	botToken := token()
-	bot := botSetup(botToken)
-	u := botConfigUpdateTimeout()
-	updates := bot.GetUpdatesChan(u)
-	updateHandler(updates, bot)
-}
+	bot := botSetup(config.BotToken())
+	updates := bot.GetUpdatesChan(config.BotUpdateConfig())
 
-func botConfigUpdateTimeout() tgbotapi.UpdateConfig {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = botTimeout
-	return u
+	updateHandler(updates, bot)
 }
 
 func botSetup(botToken string) *tgbotapi.BotAPI {
@@ -43,72 +22,9 @@ func botSetup(botToken string) *tgbotapi.BotAPI {
 	if err != nil {
 		log.Panic(err)
 	}
-	bot.Debug = debugBot
+	bot.Debug = config.DebugBot
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 	return bot
-}
-
-func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
-	for update := range updates {
-		if update.Message == nil || !update.Message.IsCommand() {
-			continue
-		}
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		command := update.Message.Command()
-		var response string
-		var err error
-
-		switch command {
-		case "help":
-			response = handleHelp()
-		case "producerUp", "producerDown", "producerStatus", "sendAll":
-			response, err = executeCommand(command)
-		case "generate":
-			var numberOfOrders int
-			numberOfOrders, err = splitArgumentString(update.Message.Text)
-			if err != nil {
-				continue
-			}
-			response, err = executeCommand(command, numberOfOrders)
-		case "status":
-			response = "Server status: " //TODO
-		default:
-			response = "Unknown command"
-		}
-
-		if err != nil {
-			log.Printf("Error handling command: %s: %v", command, err)
-			response = "An error occurred while handling your request" + err.Error()
-		}
-
-		msg = tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		if _, err := bot.Send(msg); err != nil {
-			log.Panic(err)
-		}
-	}
-}
-
-func splitArgumentString(message string) (int, error) {
-	splitText := strings.Split(message, " ")
-	ordersCount, err := strconv.Atoi(splitText[1])
-	if err != nil {
-		log.Println("Error converting str to int", err)
-		return 0, err
-	}
-	return ordersCount, nil
-}
-
-func handleHelp() string {
-	return "I understand /producerUp /producerDown /producerStatus '/generate n' and /status."
-}
-
-func token() string {
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Fatalf("TELEGRAM_BOT_TOKEN must be set")
-	}
-	return botToken
 }
 
 func loadEnv() {
@@ -118,35 +34,29 @@ func loadEnv() {
 	}
 }
 
-func executeCommand(command string, i ...int) (string, error) {
-	var endpoint string
-	switch command {
-	case "producerUp":
-		endpoint = kafkaProducerUpEndpoint
-	case "producerDown":
-		endpoint = kafkaProducerDownEndpoint
-	case "producerStatus":
-		endpoint = kafkaProducerStatusEndpoint
-	case "sendAll":
-		endpoint = orderServiceSendAllEndpoint
-	case "generate":
-		if len(i) == 0 {
-			return "", fmt.Errorf("missing parameter for generate command")
+func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
+	for update := range updates {
+		if update.Message == nil || !update.Message.IsCommand() {
+			continue
 		}
-		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(i[0])
-	default:
-		return "", fmt.Errorf("unknown command: %s", command)
-	}
 
-	response, err := http.Get(endpoint)
-	if err != nil {
-		return "", err
+		command := update.Message.Command()
+		args := strings.Fields(update.Message.Text)[1:]
+		args = append(args, command)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+		handler, exists := commands.CommandHandlers[command]
+		if exists {
+			response, err := handler(args)
+			if err != nil {
+				log.Printf("Error handling command: %s: %v", command, err)
+				response = "An error occurred while handling your request" + err.Error()
+			}
+			msg.Text = response
+		} else {
+			msg.Text = "Unknown command"
+		}
+		if _, err := bot.Send(msg); err != nil {
+			log.Panic(err)
+		}
 	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
 }

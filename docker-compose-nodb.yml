@@ -7,21 +7,20 @@ services:
     networks:
       - botnet
 
-  order-generator-service:
-    hostname: order-generation-service
+  order-service:
+    hostname: order-service
     build:
-      context: ./order_generation_service
+      context: ./order_service
       dockerfile: Dockerfile
     ports:
       - "8081:8081"
-   # restart: always
+    restart: always
     command: ["./main", "-inmemory"]
     networks:
       - botnet
 
-
   kafka_manager:
-    hostname: customers-manager
+    hostname: kafka-manager
     build:
       context: ./kafka_manager
       dockerfile: Dockerfile
@@ -41,7 +40,6 @@ services:
       - ALLOW_ANONYMOUS_LOGIN=yes
     networks:
       - botnet
-
 
   kafka:
     image: 'bitnami/kafka:3.3.1'
@@ -79,7 +77,3 @@ services:
 networks:
   botnet:
     driver: bridge
-
-#volumes:
-#  customers_db_data:
-#  warehouse_db_data:

@@ -50,10 +50,13 @@ func GetEndpoint(command string, i ...int) (string, error) {
 	case "sendAll":
 		endpoint = orderServiceSendAllEndpoint
 	case "send":
-		endpoint = orderServiceSendEndpoint
+		if len(i) == 0 {
+			return "", fmt.Errorf("missing parameter for /send command")
+		}
+		endpoint = orderServiceSendEndpoint + strconv.Itoa(i[0])
 	case "generate":
 		if len(i) == 0 {
-			return "", fmt.Errorf("missing parameter for generate command")
+			return "", fmt.Errorf("missing parameter for /generate command")
 		}
 		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(i[0])
 	default:

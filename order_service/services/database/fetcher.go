@@ -13,10 +13,10 @@ type Customer = models.Customer
 type Product = models.Product
 type Destination = models.Destination
 
-const customersDbPrefix = "CUSTOMERS_DB"
-const warehouseDbPrefix = "WAREHOUSE_DB"
+var customersDbPrefix = os.Getenv("CUSTOMERS_DB_NAME")
+var warehouseDbPrefix = os.Getenv("WAREHOUSE_DB_NAME")
 
-func FetchProductData() (*[]Product, error) {
+func FetchProducts() (*[]Product, error) {
 	db, err := openDbConnection(warehouseDbPrefix)
 	defer func() { _ = db.Close() }()
 

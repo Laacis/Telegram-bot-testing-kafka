@@ -1,117 +1,64 @@
 package main
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-	"io"
 	"log"
-	"net/http"
-	"os"
-	"strconv"
 	"strings"
+	commands "telegram_bot/commands"
+	config "telegram_bot/config"
 )
 
 func main() {
-	fmt.Println("V1.0")
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
+	loadEnv()
+	bot := botSetup(config.BotToken())
+	updates := bot.GetUpdatesChan(config.BotUpdateConfig())
 
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Fatalf("TELEGRAM_BOT_TOKEN must be set")
-	}
+	updateHandler(updates, bot)
+}
 
+func botSetup(botToken string) *tgbotapi.BotAPI {
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Panic(err)
 	}
-
-	bot.Debug = true
-
+	bot.Debug = config.DebugBot
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+	return bot
+}
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+func loadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
 
-	updates := bot.GetUpdatesChan(u)
-
+func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
 	for update := range updates {
-		if update.Message == nil { // ignore any non-Message updates
+		if update.Message == nil || !update.Message.IsCommand() {
 			continue
 		}
 
-		if !update.Message.IsCommand() { // ignore any non-command Messages
-			continue
-		}
-
+		command := update.Message.Command()
+		var args []string
+		x := strings.Fields(update.Message.Text)[1:]
+		args = append(args, command)
+		args = append(args, x...)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-
-		// Extract the command from the Message.
-		switch update.Message.Command() {
-		case "help":
-			msg.Text = "I understand /fetchProducts /gene5 and /status."
-		case "fetchProducts":
-			msg.Text = "executing generate orders..."
-			// call order-generation-service
-			orders, err := callOrderGenerationService()
+		handler, exists := commands.CommandHandlers[command]
+		if exists {
+			response, err := handler(args)
 			if err != nil {
-				log.Println("Error generating order:", err)
-				continue
+				log.Printf("Error handling command: %s: %v", command, err)
+				response = "An error occurred while handling your request" + err.Error()
 			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, orders)
-		case "generate":
-			splitText := strings.Split(update.Message.Text, " ")
-			ordersCount, err := strconv.Atoi(splitText[1])
-			if err != nil {
-				log.Println("Error converting str to int", err)
-				msg.Text = "Number of orders was not a valid integer. Use /generate {integer}"
-				continue
-			}
-			generateResponse, err := callOrderGenerationServiceBulk(ordersCount)
-			if err != nil {
-				log.Println("Error generating order:", err)
-				continue
-			}
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, generateResponse)
-		case "status":
-			msg.Text = "Server status: "
-		default:
+			msg.Text = response
+		} else {
 			msg.Text = "Unknown command"
 		}
-
 		if _, err := bot.Send(msg); err != nil {
 			log.Panic(err)
 		}
 	}
-}
-
-func callOrderGenerationService() (string, error) {
-	response, err := http.Get("http://order-generation-service:8081//fetch-products")
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func callOrderGenerationServiceBulk(i int) (string, error) {
-	response, err := http.Get("http://order-generation-service:8081/generate-orders/" + strconv.Itoa(i))
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
 }

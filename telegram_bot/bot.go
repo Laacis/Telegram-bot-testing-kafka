@@ -41,8 +41,10 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
 		}
 
 		command := update.Message.Command()
-		args := strings.Fields(update.Message.Text)[1:]
+		var args []string
+		x := strings.Fields(update.Message.Text)[1:]
 		args = append(args, command)
+		args = append(args, x...)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		handler, exists := commands.CommandHandlers[command]
 		if exists {

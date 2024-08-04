@@ -1,6 +1,10 @@
 package kafka_manager
 
-import "github.com/IBM/sarama"
+import (
+	"fmt"
+	"github.com/IBM/sarama"
+	"time"
+)
 
 type KafkaProducer struct {
 	producer sarama.SyncProducer
@@ -32,12 +36,15 @@ func (prod *KafkaProducer) Close() error {
 	return prod.producer.Close()
 }
 
-func (prod *KafkaProducer) SendBytes(message []byte, topic string) interface{} {
+func (prod *KafkaProducer) SendBytes(message []byte, topic string) error {
 	msg := &sarama.ProducerMessage{
-		Topic: topic,
-		Value: sarama.ByteEncoder(message),
+		Topic:     topic,
+		Value:     sarama.ByteEncoder(message),
+		Timestamp: time.Now(),
 	}
 
-	_, _, err := prod.producer.SendMessage(msg)
+	partition, offset, err := prod.producer.SendMessage(msg)
+	x := fmt.Sprintf("Sent to partion %v and the offset is %v", partition, offset)
+	fmt.Println(x)
 	return err
 }

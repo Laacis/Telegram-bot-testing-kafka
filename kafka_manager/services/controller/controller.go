@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const kafkaHost = "kafka:9092"
+
 type KafkaController struct {
 	producer *producer.KafkaProducer
 	running  bool
@@ -26,6 +28,7 @@ func (kc *KafkaController) ProducerSendMessagesHandler(writer http.ResponseWrite
 
 	//TODO check conditions
 	if !kc.running {
+		fmt.Println("trying to send messages")
 		http.Error(writer, "Producer is not running", http.StatusInternalServerError)
 		return
 	}
@@ -37,14 +40,17 @@ func (kc *KafkaController) ProducerSendMessagesHandler(writer http.ResponseWrite
 	}
 	messagesToSend := bytes.Split(body, []byte("\n"))
 
+	mT := fmt.Sprintf("messages to send: %d", len(messagesToSend))
+	fmt.Println(mT)
 	//TODO make topic from  a source like .env or something else
 	//TODO make new struct to track the status of the message and implement resending messages if status is not "sent : true"
 
 	for _, message := range messagesToSend {
-		err := kc.producer.SendBytes(message, "test topic")
+		err := kc.producer.SendBytes(message, "orders")
 		if err != nil {
 			//TODO implement resend
-			http.Error(writer, "Error sending message to Kafka: ", http.StatusInternalServerError)
+			fmt.Println("Got error sending message to kafka" + err.Error())
+			http.Error(writer, "Error sending message to Kafka: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -54,13 +60,13 @@ func (kc *KafkaController) ProducerSendMessagesHandler(writer http.ResponseWrite
 func (kc *KafkaController) ProducerUpHandler(writer http.ResponseWriter, request *http.Request) {
 	kc.mu.Lock()
 	defer kc.mu.Unlock()
-	fmt.Println(" Exec producer UP command ...")
+
 	if kc.running {
 		http.Error(writer, "Error: Producer already running", http.StatusBadRequest)
 		return
 	}
 
-	brokers := []string{"kafka:9092"}
+	brokers := []string{kafkaHost}
 	prod, err := producer.NewKafkaProducer(brokers)
 	if err != nil {
 		http.Error(writer, "Error starting producer: "+err.Error(), http.StatusInternalServerError)
@@ -75,18 +81,17 @@ func (kc *KafkaController) ProducerDownHandler(writer http.ResponseWriter, reque
 	kc.mu.Lock()
 	defer kc.mu.Unlock()
 
-	fmt.Println(" Exec producer Down command ...")
 	if !kc.running {
 		fmt.Println("running is false")
 		http.Error(writer, "Producer not running", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(" Exec Close() on producer")
+
 	if err := kc.producer.Close(); err != nil {
 		http.Error(writer, "Error stopping producer", http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(" go this far!!!")
+
 	kc.producer = nil
 	kc.running = false
 	writer.Write([]byte("Producer stopped"))

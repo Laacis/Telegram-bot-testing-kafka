@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	config "telegram_bot/config"
 )
 
@@ -25,7 +24,7 @@ func handleHelp(args []string) (string, error) {
 }
 
 func simpleGetHandlerNoArguments(args []string) (string, error) {
-	command := strings.Split(args[0], " ")[0]
+	command := args[0]
 	endpoint, err := config.GetEndpoint(command)
 	if err != nil {
 		return "", err
@@ -48,13 +47,13 @@ func simpleGetHandlerOneArgument(args []string) (string, error) {
 	if len(args) == 0 {
 		return "", fmt.Errorf("missing parameter for generate command")
 	}
-
-	numOrders, err := strconv.Atoi(args[0])
+	command := args[0]
+	numOrders, err := strconv.Atoi(args[1])
 	if err != nil {
 		return "", fmt.Errorf("invalid number of orders: %s", args[0])
 	}
 
-	endpoint, err := config.GetEndpoint("generate", numOrders)
+	endpoint, err := config.GetEndpoint(command, numOrders)
 	if err != nil {
 		return "", err
 	}

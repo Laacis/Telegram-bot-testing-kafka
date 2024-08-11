@@ -22,11 +22,11 @@ var (
 	orderServiceSendEndpoint     string
 )
 
-func init() {
+func InitConfig() {
 	//token
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	botToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
-		log.Fatalf("TELEGRAM_BOT_TOKEN must be set")
+		log.Fatal("TELEGRAM_BOT_TOKEN was not set, check .env")
 	}
 
 	//timeout

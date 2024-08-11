@@ -11,6 +11,7 @@ import (
 
 func init() {
 	loadEnv()
+	config.InitConfig()
 }
 
 func main() {

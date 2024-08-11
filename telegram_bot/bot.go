@@ -9,8 +9,11 @@ import (
 	config "telegram_bot/config"
 )
 
-func main() {
+func init() {
 	loadEnv()
+}
+
+func main() {
 	bot := botSetup(config.BotToken())
 	updates := bot.GetUpdatesChan(config.BotUpdateConfig())
 

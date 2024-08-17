@@ -19,10 +19,6 @@ type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-func handleHelp(args []string) (string, error) {
-	return "I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", nil
-}
-
 func CraftCommand(args []string, endpointGetter EndpointGetter) (*Command, error) {
 	//command comes as first args[0]
 	command := args[0]
@@ -37,7 +33,6 @@ func CraftCommand(args []string, endpointGetter EndpointGetter) (*Command, error
 		}
 	}
 	var endpoint string
-
 	if intArgs == 0 {
 		endpoint, err = endpointGetter.GetEndpoint(command)
 	} else {

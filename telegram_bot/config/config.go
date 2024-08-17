@@ -22,6 +22,10 @@ var (
 	orderServiceSendEndpoint     string
 )
 
+type ConfigData struct {
+	//endpoints map[string]string
+}
+
 func InitConfig() {
 	//token
 	botToken = os.Getenv("TELEGRAM_BOT_TOKEN")
@@ -64,7 +68,7 @@ func BotUpdateConfig() tgbotapi.UpdateConfig {
 	return u
 }
 
-func GetEndpoint(command string, i ...int) (string, error) {
+func (c *ConfigData) GetEndpoint(command string, i ...int) (string, error) {
 	var endpoint string
 	switch command {
 	case "producerUp":

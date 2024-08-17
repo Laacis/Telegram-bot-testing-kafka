@@ -33,6 +33,7 @@ func CraftCommand(args []string, endpointGetter EndpointGetter) (*Command, error
 		intArgs, err = strconv.Atoi(args[1])
 		if err != nil {
 			log.Printf("Error converting arg to int: %v", err)
+			return nil, err
 		}
 	}
 	var endpoint string

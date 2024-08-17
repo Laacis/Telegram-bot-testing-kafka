@@ -52,7 +52,7 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 		commandArgs := craftCommandString(update)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
-		command, err := commands.CraftCommand(commandArgs, cfg)
+		command, err := commands.CreateCommand(commandArgs, cfg)
 		if err != nil {
 			log.Printf("Error crafting command: %v", err)
 		}

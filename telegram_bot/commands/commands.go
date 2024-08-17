@@ -19,7 +19,7 @@ type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-func CraftCommand(args []string, endpointGetter EndpointGetter) (*Command, error) {
+func CreateCommand(args []string, endpointGetter EndpointGetter) (*Command, error) {
 	//command comes as first args[0]
 	command := args[0]
 	//possible int args following

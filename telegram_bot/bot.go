@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"log"
@@ -48,23 +49,24 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 			continue
 		}
 
-		// Craft command-string
 		commandArgs := craftCommandString(update)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
-		// Get command Object
-		commandObj, err := commands.CraftCommand(commandArgs, cfg)
+		command, err := commands.CraftCommand(commandArgs, cfg)
 		if err != nil {
-			log.Printf("Error handling handler: %v", err)
+			log.Printf("Error crafting command: %v", err)
 		}
-		// TODO verify command exists, has endpoint or is internal
-		// Execute the command
-		response, err := commandObj.Execute(httpClient)
-		if err != nil {
-			log.Printf("Error handling handler: %v", err)
-			response = "An error occurred while handling your request" + err.Error()
+		if command != nil {
+			response, err := command.Execute(httpClient)
+			if err != nil {
+				log.Printf("Error handling response: %v", err)
+				response = "An error occurred while handling your request"
+			}
+			msg.Text = response
+		} else {
+			str := fmt.Sprintf("Unknown command %s! I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", commandArgs[0])
+			msg.Text = str
 		}
-		msg.Text = response
 		if _, err := bot.Send(msg); err != nil {
 			log.Panic(err)
 		}

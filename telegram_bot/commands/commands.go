@@ -1,76 +1,69 @@
 package telegram_bot
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
-	config "telegram_bot/config"
 )
 
-var CommandHandlers = map[string]func([]string) (string, error){
-	"help":           handleHelp,
-	"producerUp":     simpleGetHandlerNoArguments,
-	"producerDown":   simpleGetHandlerNoArguments,
-	"producerStatus": simpleGetHandlerNoArguments,
-	"sendAll":        simpleGetHandlerNoArguments,
-	"send":           simpleGetHandlerOneArgument,
-	"generate":       simpleGetHandlerOneArgument,
-	"status":         handleStatus,
+type Command struct {
+	endpoint string
+}
+
+type EndpointGetter interface {
+	GetEndpoint(command string, args ...int) (string, error)
+}
+
+type HTTPClient interface {
+	Get(url string) (*http.Response, error)
 }
 
 func handleHelp(args []string) (string, error) {
 	return "I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", nil
 }
 
-func simpleGetHandlerNoArguments(args []string) (string, error) {
+func CraftCommand(args []string, endpointGetter EndpointGetter) (*Command, error) {
+	//command comes as first args[0]
 	command := args[0]
-	endpoint, err := config.GetEndpoint(command)
+	//possible int args following
+	var intArgs int
+	var err error
+	if len(args) > 1 {
+		intArgs, err = strconv.Atoi(args[1])
+		if err != nil {
+			log.Printf("Error converting arg to int: %v", err)
+		}
+	}
+	var endpoint string
+
+	if intArgs == 0 {
+		endpoint, err = endpointGetter.GetEndpoint(command)
+	} else {
+		endpoint, err = endpointGetter.GetEndpoint(command, intArgs)
+	}
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	response, err := http.Get(endpoint)
+	result := Command{
+		endpoint: endpoint,
+	}
+	return &result, nil
+}
+
+func (h *Command) Execute(c HTTPClient) (string, error) {
+	resultStr := ""
+	response, err := c.Get(h.endpoint)
 	if err != nil {
 		return "", err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return "", err
 	}
-	return string(data), nil
-}
-
-func simpleGetHandlerOneArgument(args []string) (string, error) {
-	if len(args) == 0 {
-		return "", fmt.Errorf("missing parameter for generate command")
-	}
-	command := args[0]
-	numOrders, err := strconv.Atoi(args[1])
-	if err != nil {
-		return "", fmt.Errorf("invalid number of orders: %s", args[0])
-	}
-
-	endpoint, err := config.GetEndpoint(command, numOrders)
-	if err != nil {
-		return "", err
-	}
-
-	response, err := http.Get(endpoint)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
-
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func handleStatus(args []string) (string, error) {
-	return "Server status: TODO", nil
+	resultStr = string(data)
+	return resultStr, nil
 }

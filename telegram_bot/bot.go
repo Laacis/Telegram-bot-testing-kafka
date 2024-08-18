@@ -82,10 +82,13 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 func extractArgs(update tgbotapi.Update) (string, int, error) {
 	commandString := update.Message.Command()
 	args := strings.Fields(update.Message.Text)[1:]
-	arg, err := strconv.Atoi(args[0])
-	if err != nil {
-		log.Printf("Error converting arg to int: %v", err)
-		return "", 0, err
+	if len(args) > 0 {
+		arg, err := strconv.Atoi(args[0])
+		if err != nil {
+			log.Printf("Error converting arg to int: %v", err)
+			return "", 0, err
+		}
+		return commandString, arg, nil
 	}
-	return commandString, arg, nil
+	return commandString, 0, nil
 }

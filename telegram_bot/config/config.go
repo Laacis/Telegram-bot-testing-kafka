@@ -68,7 +68,7 @@ func BotUpdateConfig() tgbotapi.UpdateConfig {
 	return u
 }
 
-func (c *ConfigData) GetEndpoint(command string, arg ...int) (string, error) {
+func (c *ConfigData) GetEndpoint(command string, i ...int) (string, error) {
 	var endpoint string
 	switch command {
 	case "producerUp":
@@ -80,15 +80,15 @@ func (c *ConfigData) GetEndpoint(command string, arg ...int) (string, error) {
 	case "sendAll":
 		endpoint = orderServiceSendAllEndpoint
 	case "send":
-		if len(arg) != 1 {
+		if len(i) != 1 {
 			return "", fmt.Errorf("missing parameter for /send command")
 		}
-		endpoint = orderServiceSendEndpoint + strconv.Itoa(arg[0])
+		endpoint = orderServiceSendEndpoint + strconv.Itoa(i[0])
 	case "generate":
-		if len(arg) != 1 {
+		if len(i) != 1 {
 			return "", fmt.Errorf("missing parameter for /generate command")
 		}
-		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(arg[0])
+		endpoint = orderServiceGenerateEndpoint + strconv.Itoa(i[0])
 	default:
 		return "", fmt.Errorf("unknown command: %s", command)
 	}

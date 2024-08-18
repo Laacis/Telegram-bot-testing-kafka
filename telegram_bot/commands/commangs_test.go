@@ -26,38 +26,38 @@ func (m *MockEndpointGetter) GetEndpoint(command string, args ...int) (string, e
 }
 
 func (client *MockHttpClient) Get(endpoint string) (*http.Response, error) {
-	if endpoint != "localhost" {
-		return &http.Response{
-			StatusCode: 404,
-			Body:       io.NopCloser(strings.NewReader("HostNotFound")),
-		}, errors.New("mocked failure 404")
+	if endpoint == "error" {
+		return nil, errors.New("mocked failure")
 	}
-	mockedResponseStr := "Executed successfully"
+	statusCode, err := strconv.Atoi(endpoint)
+	if err != nil {
+		return nil, errors.New("error converting mocked status code")
+	}
 	response := &http.Response{
-		StatusCode: 200,
-		Body:       io.NopCloser(strings.NewReader(mockedResponseStr)),
+		StatusCode: statusCode,
+		Body:       io.NopCloser(strings.NewReader(endpoint)),
 	}
 	return response, nil
 }
 
 func TestCreateCommand(t *testing.T) {
 	tests := []struct {
-		caseName  string
-		command   string
-		params    string
-		expected  *Command
-		shouldErr bool
+		caseName   string
+		commandStr string
+		arg        int
+		expected   *Command
+		shouldErr  bool
 	}{
-		{"successfullyCreateCommand", "test", "1", &Command{endpoint: "test/endpoint/1"}, false},
-		{"failCreateCommandWithNotIntArg", "test", "a", nil, true},
-		{"failCreateCommandGetterError", "fail", "1", nil, true},
+		{"successfullyCreateCommandNoArgs", "test", 0, &Command{endpoint: "test/endpoint/"}, false},
+		{"successfullyCreateCommandOneArg", "test", 1, &Command{endpoint: "test/endpoint/1"}, false},
+		{"failCreateCommandGetterError", "fail", 1, nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.caseName, func(t *testing.T) {
 			mockEndpointGetter := new(MockEndpointGetter)
-			args := append(make([]string, 0, 2), test.command, test.params)
-			returned, err := CreateCommand(args, mockEndpointGetter)
+
+			returned, err := Create(test.commandStr, test.arg, mockEndpointGetter)
 			if (err != nil) != test.shouldErr {
 				t.Errorf("CreateCommand() error = %v, shouldErr %v", err, test.shouldErr)
 				return
@@ -83,8 +83,10 @@ func TestCommand_Execute(t *testing.T) {
 		expected  string
 		shouldErr bool
 	}{
-		{"successfullyExecute", &Command{endpoint: "localhost"}, "Executed successfully", false},
-		{"failExecuteClientErr", &Command{endpoint: "failHost"}, "", true},
+		{"successfullyExecute", &Command{endpoint: "200"}, "200", false},
+		{"failExecuteClientErr", &Command{endpoint: "error"}, "", true},
+		{"failExecuteResponseCode404", &Command{endpoint: "404"}, "", true},
+		{"failExecuteResponseCode500", &Command{endpoint: "500"}, "", true},
 	}
 
 	for _, test := range tests {

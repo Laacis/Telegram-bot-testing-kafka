@@ -58,7 +58,8 @@ func TestGetEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.command, func(t *testing.T) {
-			got, err := GetEndpoint(tt.command, tt.params...)
+			configData := new(ConfigData)
+			got, err := configData.GetEndpoint(tt.command, tt.params...)
 			if (err != nil) != tt.shouldErr {
 				t.Errorf("GetEndpoint() error = %v, shouldErr %v", err, tt.shouldErr)
 				return

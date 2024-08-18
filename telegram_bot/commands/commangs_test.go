@@ -1,8 +1,8 @@
 package telegram_bot
 
 import (
+	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,6 +13,9 @@ type MockEndpointGetter struct{}
 type MockHttpClient struct{}
 
 func (m *MockEndpointGetter) GetEndpoint(command string, args ...int) (string, error) {
+	if command == "fail" {
+		return "", errors.New("mock endpoint failure")
+	}
 	var str string
 	if len(args) > 0 {
 		str = command + "/endpoint/" + strconv.Itoa(args[0])
@@ -23,6 +26,12 @@ func (m *MockEndpointGetter) GetEndpoint(command string, args ...int) (string, e
 }
 
 func (client *MockHttpClient) Get(endpoint string) (*http.Response, error) {
+	if endpoint != "localhost" {
+		return &http.Response{
+			StatusCode: 404,
+			Body:       io.NopCloser(strings.NewReader("HostNotFound")),
+		}, errors.New("mocked failure 404")
+	}
 	mockedResponseStr := "Executed successfully"
 	response := &http.Response{
 		StatusCode: 200,
@@ -32,35 +41,65 @@ func (client *MockHttpClient) Get(endpoint string) (*http.Response, error) {
 }
 
 func TestCreateCommand(t *testing.T) {
-	mockEndpointGetter := new(MockEndpointGetter)
-	command := "producerUpt"
-	intArgs := "1"
-	args := append(make([]string, 0, 2), command, intArgs)
-	expectedStr := command + "/endpoint/" + intArgs
-	expectedObject := Command{
-		endpoint: expectedStr,
+	tests := []struct {
+		caseName  string
+		command   string
+		params    string
+		expected  *Command
+		shouldErr bool
+	}{
+		{"successfullyCreateCommand", "test", "1", &Command{endpoint: "test/endpoint/1"}, false},
+		{"failCreateCommandWithNotIntArg", "test", "a", nil, true},
+		{"failCreateCommandGetterError", "fail", "1", nil, true},
 	}
-	returned, err := CreateCommand(args, mockEndpointGetter)
-	if err != nil {
-		log.Printf("Error while testing : %v", err)
-	}
-	if returned.endpoint != expectedObject.endpoint {
-		t.Errorf("CraftCommand() returned %v, but was expected %v.", returned.endpoint, expectedObject.endpoint)
+
+	for _, test := range tests {
+		t.Run(test.caseName, func(t *testing.T) {
+			mockEndpointGetter := new(MockEndpointGetter)
+			args := append(make([]string, 0, 2), test.command, test.params)
+			returned, err := CreateCommand(args, mockEndpointGetter)
+			if (err != nil) != test.shouldErr {
+				t.Errorf("CreateCommand() error = %v, shouldErr %v", err, test.shouldErr)
+				return
+			}
+			if !endpointComparor(returned, test.expected) {
+				t.Errorf("CraftCommand() returned endpoint doesn't match the expected.")
+			}
+		})
 	}
 }
 
+func endpointComparor(returned *Command, expected *Command) bool {
+	if returned == nil && expected == nil {
+		return true
+	}
+	return returned.endpoint == expected.endpoint
+}
+
 func TestCommand_Execute(t *testing.T) {
-	cmd := Command{
-		endpoint: "localhost",
-	}
-	expectedStr := "Executed successfully"
-	mockHttpClient := new(MockHttpClient)
-	response, err := cmd.Execute(mockHttpClient)
-	if err != nil {
-		log.Printf("Error while testing : %v", err)
-	}
-	if expectedStr != response {
-		t.Errorf("command.Excute() returned %v, but was expected %v.", response, expectedStr)
+	tests := []struct {
+		caseName  string
+		command   *Command
+		expected  string
+		shouldErr bool
+	}{
+		{"successfullyExecute", &Command{endpoint: "localhost"}, "Executed successfully", false},
+		{"failExecuteClientErr", &Command{endpoint: "failHost"}, "", true},
 	}
 
+	for _, test := range tests {
+		t.Run(test.caseName, func(t *testing.T) {
+			mockHttpClient := new(MockHttpClient)
+			response, err := test.command.Execute(mockHttpClient)
+			if (err != nil) != test.shouldErr {
+				t.Errorf("CreateCommand() error = %v, shouldErr %v", err, test.shouldErr)
+				return
+			}
+
+			if test.expected != response {
+				t.Errorf("command.Excute() returned %v, but was expected %v.", response, test.expected)
+			}
+
+		})
+	}
 }

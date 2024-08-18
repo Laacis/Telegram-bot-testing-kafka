@@ -1,10 +1,9 @@
 package telegram_bot
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"strconv"
 )
 
 type Command struct {
@@ -19,24 +18,13 @@ type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
-func CreateCommand(args []string, endpointGetter EndpointGetter) (*Command, error) {
-	//command comes as first args[0]
-	command := args[0]
-	//possible int args following
-	var intArgs int
-	var err error
-	if len(args) > 1 {
-		intArgs, err = strconv.Atoi(args[1])
-		if err != nil {
-			log.Printf("Error converting arg to int: %v", err)
-			return nil, err
-		}
-	}
+func Create(command string, arg int, endpointGetter EndpointGetter) (*Command, error) {
 	var endpoint string
-	if intArgs == 0 {
+	var err error
+	if arg == 0 {
 		endpoint, err = endpointGetter.GetEndpoint(command)
 	} else {
-		endpoint, err = endpointGetter.GetEndpoint(command, intArgs)
+		endpoint, err = endpointGetter.GetEndpoint(command, arg)
 	}
 	if err != nil {
 		return nil, err
@@ -49,17 +37,20 @@ func CreateCommand(args []string, endpointGetter EndpointGetter) (*Command, erro
 }
 
 func (h *Command) Execute(c HTTPClient) (string, error) {
-	resultStr := ""
 	response, err := c.Get(h.endpoint)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to perform GET request to %s: %w", h.endpoint, err)
 	}
 	defer func() { _ = response.Body.Close() }()
 
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return "", fmt.Errorf("HTTP request failed with status code %d", response.StatusCode)
+	}
+
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read response body from %s: %w", h.endpoint, err)
 	}
-	resultStr = string(data)
-	return resultStr, nil
+
+	return string(data), nil
 }

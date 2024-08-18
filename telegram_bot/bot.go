@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	commands "telegram_bot/commands"
 	config "telegram_bot/config"
@@ -49,35 +50,42 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 			continue
 		}
 
-		commandArgs := craftCommandString(update)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-
-		command, err := commands.CreateCommand(commandArgs, cfg)
+		commandString, arg, err := extractArgs(update)
 		if err != nil {
-			log.Printf("Error crafting command: %v", err)
-		}
-		if command != nil {
-			response, err := command.Execute(httpClient)
-			if err != nil {
-				log.Printf("Error handling response: %v", err)
-				response = "An error occurred while handling your request"
-			}
-			msg.Text = response
+			log.Printf("Error extracting args: %v", err)
+			msg.Text = "An error occurred while handling your request"
 		} else {
-			str := fmt.Sprintf("Unknown command %s! I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", commandArgs[0])
-			msg.Text = str
+			cmd, err := commands.Create(commandString, arg, cfg)
+			if err != nil {
+				log.Printf("Error crafting cmd: %v", err)
+			}
+			if cmd != nil {
+				response, err := cmd.Execute(httpClient)
+				if err != nil {
+					log.Printf("Error handling response: %v", err)
+					response = "An error occurred while handling your request"
+				}
+				msg.Text = response
+			} else {
+				str := fmt.Sprintf("Unknown cmd %s! I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", commandString)
+				msg.Text = str
+			}
 		}
+
 		if _, err := bot.Send(msg); err != nil {
 			log.Panic(err)
 		}
 	}
 }
 
-func craftCommandString(update tgbotapi.Update) []string {
-	command := update.Message.Command()
-	var args []string
-	x := strings.Fields(update.Message.Text)[1:]
-	args = append(args, command)
-	args = append(args, x...)
-	return args
+func extractArgs(update tgbotapi.Update) (string, int, error) {
+	commandString := update.Message.Command()
+	args := strings.Fields(update.Message.Text)[1:]
+	arg, err := strconv.Atoi(args[0])
+	if err != nil {
+		log.Printf("Error converting arg to int: %v", err)
+		return "", 0, err
+	}
+	return commandString, arg, nil
 }

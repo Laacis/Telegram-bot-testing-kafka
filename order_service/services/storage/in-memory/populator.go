@@ -3,23 +3,69 @@ package order_generation_service
 import (
 	"bufio"
 	"fmt"
+	"log"
 	models "order_generation_service/models"
+	parsers "order_generation_service/services/parser"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
-func LoadSQLFile[T any](filename string, tableName string, storage *InMemoryStorage[T], parseFunc func([]string) (T, error), pattern string) error {
+const (
+	destinationPattern       = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+)\)`
+	productPattern           = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
+	customersSqlInitFileName = "./sql/init.sql"
+	warehouseSqlInitFileName = "./sql/init_warehouse.sql"
+	kafkaFeedUrl             = "http://kafka_manager:8082/producer/feed"
+	messageChunkSize         = 100
+	defaultOrderLimit        = -1
+)
+
+type Destination = models.Destination
+type Product = models.Product
+
+type InMemoryDataBase struct {
+	Destinations *InMemoryStorage[Destination]
+	Products     *InMemoryStorage[Product]
+}
+
+func NewInMemoryDataBase() *InMemoryDataBase {
+	return &InMemoryDataBase{
+		Destinations: NewInMemoryStorage[Destination](),
+		Products:     NewInMemoryStorage[Product](),
+	}
+}
+
+func (db *InMemoryDataBase) PopulateInMemoryStorage() {
+	destinationParser := parsers.DestinationParser{}
+	productParser := parsers.ProductParser{}
+	if err := LoadSQLFile(customersSqlInitFileName, "destinations", db.Destinations, destinationParser, destinationPattern); err != nil {
+		log.Fatalf("Failed to load SQL file: %v", err)
+	}
+	if err := LoadSQLFile(warehouseSqlInitFileName, "products", db.Products, productParser, productPattern); err != nil {
+		log.Fatalf("Failed to load SQL file: %v", err)
+	}
+}
+
+func LoadSQLFile[T any](filename string, tableName string, storage *InMemoryStorage[T], parser parsers.Parser[T], pattern string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = file.Close() }()
-
 	re := regexp.MustCompile(pattern)
+	statements := scanForStatement(file, tableName)
+	for _, statement := range statements {
+		parseStatementToStorage(statement, storage, parser, re)
+	}
+
+	return nil
+}
+
+func scanForStatement(file *os.File, tableName string) []string {
 	var capture bool
 	scanner := bufio.NewScanner(file)
+	statements := make([]string, 0)
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -30,56 +76,24 @@ func LoadSQLFile[T any](filename string, tableName string, storage *InMemoryStor
 
 		if capture {
 			if strings.Contains(line, ";") {
-				parseStatement(line, storage, parseFunc, re)
 				capture = false
-			} else {
-				parseStatement(line, storage, parseFunc, re)
 			}
+			statements = append(statements, line)
 		}
 	}
-	return scanner.Err()
+
+	return statements
 }
 
-func parseStatement[T any](line string, storage *InMemoryStorage[T], parseFunc func([]string) (T, error), re *regexp.Regexp) {
-
-	matches := re.FindStringSubmatch(line)
+func parseStatementToStorage[T any](statement string, storage *InMemoryStorage[T], parser parsers.Parser[T], re *regexp.Regexp) {
+	matches := re.FindStringSubmatch(statement)
 	if matches != nil {
 		parts := matches[1:]
-
-		item, err := parseFunc(parts)
+		item, err := parsers.ParseData(parser, parts)
 		if err == nil {
 			storage.Add(item)
 		} else {
 			fmt.Printf("Error parsing parts: %v\n", err)
 		}
 	}
-}
-
-func ParseDestination(parts []string) (models.Destination, error) {
-	customerID, err := strconv.Atoi(parts[4])
-	if err != nil {
-		return models.Destination{}, err
-	}
-	return models.Destination{
-		RestaurantCode: parts[0],
-		RestaurantName: parts[1],
-		Address:        parts[2],
-		AreaCode:       parts[3],
-		CustomerId:     customerID,
-	}, nil
-}
-
-func ParseProduct(parts []string) (models.Product, error) {
-	bPrice, _ := strconv.ParseFloat(parts[4], 64)
-	unitCount, _ := strconv.Atoi(parts[5])
-	unitWeight, _ := strconv.Atoi(parts[6])
-	return models.Product{
-		ProductKey:      parts[0],
-		Name:            parts[1],
-		Manufacturer:    parts[2],
-		ThermalCategory: parts[3],
-		BuyPrice:        bPrice,
-		UnitsPerPallet:  unitCount,
-		UnitWeightKg:    unitWeight,
-	}, nil
 }

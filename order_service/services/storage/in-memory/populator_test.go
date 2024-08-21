@@ -2,13 +2,12 @@ package order_generation_service
 
 import (
 	models "order_generation_service/models"
+	parsers "order_generation_service/services/parser"
 	"os"
 	"testing"
 )
 
-// Test for loadSQLFile and parseStatement functions
 func TestLoadSQLFile(t *testing.T) {
-	// Create a temporary SQL file with test data
 	sqlContent := `
 		INSERT INTO destinations (restaurant_code, restaurant_name, address, area_code, customer_id) VALUES
 		('MCD001', 'McD Victory park', '20A Victory park, Springfield, 5501', '55', 1),
@@ -21,34 +20,31 @@ func TestLoadSQLFile(t *testing.T) {
 		('234567001', 'Classic Mayonnaise', 'Creamy Delights', 'CHILL', 45.99, 100, 1);
 `
 
-	tmpfile, err := os.CreateTemp("", "testdata*.sql")
+	tmpFile, err := os.CreateTemp("", "testdata*.sql")
 	if err != nil {
 		t.Fatalf("Failed to create temporary file: %v", err)
 	}
-	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
-	_, err = tmpfile.WriteString(sqlContent)
+	_, err = tmpFile.WriteString(sqlContent)
 	if err != nil {
 		t.Fatalf("Failed to write to temporary file: %v", err)
 	}
-	tmpfile.Close()
+	tmpFile.Close()
 
-	//setting up regEx patterns
-	destinationPattern := `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+)\)`
-	productPattern := `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
+	dataBase := NewInMemoryDataBase()
+	storage := dataBase.Destinations
+	storageTwo := dataBase.Products
 
-	// Initialize in-memory storages
-	storage := NewInMemoryStorage[models.Destination]()
-	storageTwo := NewInMemoryStorage[models.Product]()
+	destinationParser := parsers.DestinationParser{}
+	productParser := parsers.ProductParser{}
 
-	// Load data from the temporary SQL file
-	err = LoadSQLFile(tmpfile.Name(), "destinations", storage, ParseDestination, destinationPattern)
+	err = LoadSQLFile(tmpFile.Name(), "destinations", storage, destinationParser, destinationPattern)
 	if err != nil {
 		t.Fatalf("Failed to load SQL file: %v", err)
 	}
 
-	// Load data from the temporary SQL file
-	err = LoadSQLFile(tmpfile.Name(), "products", storageTwo, ParseProduct, productPattern)
+	err = LoadSQLFile(tmpFile.Name(), "products", storageTwo, productParser, productPattern)
 	if err != nil {
 		t.Fatalf("Failed to load SQL file: %v", err)
 	}

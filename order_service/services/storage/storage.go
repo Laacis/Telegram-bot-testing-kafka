@@ -4,7 +4,6 @@ import (
 	models "order_generation_service/models"
 )
 
-// make a local storage to store []Order
 type Order = models.Order
 
 type OrderStorageInterface interface {
@@ -26,13 +25,13 @@ func (s *OrderStorage) AddOrder(order Order) {
 	s.orders = append(s.orders, order)
 }
 
-func (s *OrderStorage) NextOrder() (Order, bool) {
+func (s *OrderStorage) NextOrder() (*Order, bool) {
 	if len(s.orders) == 0 {
-		return Order{}, false
+		return nil, false
 	}
 	nextOrder := s.orders[0]
 	s.orders = s.orders[1:]
-	return nextOrder, true
+	return &nextOrder, true
 }
 
 func (s *OrderStorage) Length() int {

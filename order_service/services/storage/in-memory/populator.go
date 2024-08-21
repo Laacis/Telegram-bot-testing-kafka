@@ -16,9 +16,6 @@ const (
 	productPattern           = `\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*)',\s*([0-9]+(?:\.[0-9]+)?),\s*([0-9]+),\s*([0-9]+)\)`
 	customersSqlInitFileName = "./sql/init.sql"
 	warehouseSqlInitFileName = "./sql/init_warehouse.sql"
-	kafkaFeedUrl             = "http://kafka_manager:8082/producer/feed"
-	messageChunkSize         = 100
-	defaultOrderLimit        = -1
 )
 
 type Destination = models.Destination

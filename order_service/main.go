@@ -8,16 +8,14 @@ import (
 	"log"
 	"net/http"
 	handler "order_generation_service/services/handler"
-	storage "order_generation_service/services/storage"
-	inmemory "order_generation_service/services/storage/in-memory"
+	inmemory "order_generation_service/services/storage/inmemory"
 )
 
 var useInMemory bool
-var orderStorage = storage.NewStorage()
 var inMemoryDataBase *inmemory.InMemoryDataBase
 
 func init() {
-	flag.BoolVar(&useInMemory, "inmemory", false, "Use in-memory storage instead of database")
+	flag.BoolVar(&useInMemory, "inmemory", false, "Use inmemory storage instead of database")
 }
 
 func main() {
@@ -29,13 +27,14 @@ func main() {
 	}
 
 	handler := &handler.Handler{
-		Storage:      orderStorage,
+		Storage:      inmemory.NewQueue[handler.Order](100),
 		Destinations: inMemoryDataBase.Destinations,
 		Products:     inMemoryDataBase.Products,
 	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/generate-orders/{i}", handler.GenerateOrdersHandler).Methods("GET")
+	// TODO SendAll is not working as expected and verify number of orders sent(counter works not as expected)
 	router.HandleFunc("/orders/send/all", handler.SendOrdersHandler).Methods("GET")
 	router.HandleFunc("/orders/send/{i}", handler.SendOrdersHandler).Methods("GET")
 	router.HandleFunc("/orders/stored", storedOrdersHandler).Methods("GET")

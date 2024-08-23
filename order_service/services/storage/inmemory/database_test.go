@@ -49,7 +49,7 @@ func TestLoadSQLFile(t *testing.T) {
 		t.Fatalf("Failed to load SQL file: %v", err)
 	}
 
-	// Verify the contents of the in-memory storage
+	// Verify the contents of the inmemory storage
 	expected := []models.Destination{
 		{
 			RestaurantCode: "MCD001",

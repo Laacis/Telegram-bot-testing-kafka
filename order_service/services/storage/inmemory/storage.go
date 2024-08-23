@@ -27,3 +27,16 @@ func (s *InMemoryStorage[T]) AllRecords() *[]T {
 func (s *InMemoryStorage[T]) Length() int {
 	return len(s.items)
 }
+
+type myInterface[T any] interface {
+	Next() (T, bool)
+}
+
+func (s *InMemoryStorage[T]) Next() (*T, bool) {
+	if len(s.items) == 0 {
+		return nil, false
+	}
+	next := s.items[0]
+	s.items = s.items[1:]
+	return &next, true
+}

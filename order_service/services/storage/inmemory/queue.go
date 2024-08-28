@@ -10,7 +10,7 @@ type Queue[T any] struct {
 
 func NewQueue[T any](cap int) *Queue[T] {
 	return &Queue[T]{
-		data: make([]T, 0),
+		data: make([]T, cap),
 		cap:  cap,
 	}
 }

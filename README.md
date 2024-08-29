@@ -26,14 +26,13 @@ The orders are sent to kafka producer and over to kafka.(on bot command)
 <h2>🤖 DEPLOYMENT:</h2>
 Goes in two deployable versions, with databases(postgres) and with in-memory storage.
 Important: before deployment, update your .env files.
-```
+
+`docker-compose -f docker-compose-nodb.yml up -d`
 //for in-memory storage (recommended)
-docker-compose -f docker-compose-nodb.yml up -d
-```
-```
+
+`docker-compose up -d`
 //to deploy with two databases(not recommended)
-docker-compose up -d
-```
+
 <h2> 😮 PLANNED CHANGES: </h2>
 
 - [ ] Extract order generation logic into separate service

@@ -4,7 +4,7 @@ This is a pet project, I had the need to code in order to learn more about kafka
 I felt the need to have automated order generator, that will send the generated orders to kafka producer, so I can work on the consumers and processing the messages received.
 So here it is, it works as intended, but still require some fixes and adjustments.
 I learned a lot while doing this project and hope to learn even more in the future.
-The project is for study purpose only and is not meant to be used by multiple users flooding your kafka endpoint
+The project is for study purpose only and is not meant to be used by multiple users flooding your kafka endpoint.
 
 <h2> 🙈 INFO: </h2>
 🔧 Important❗project is still in development 🔧
@@ -24,6 +24,7 @@ The orders are sent to kafka producer and over to kafka.(on bot command)
 ---
 <h2>🤖 DEPLOYMENT:</h2>
 Goes in two deployable versions, with databases(postgres) and with in-memory storage.
+Important: before deployment, update your .env files.
 ```
 //for in-memory storage (recommended)
 docker-compose -f docker-compose-nodb.yml up -d

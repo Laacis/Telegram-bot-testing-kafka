@@ -5,7 +5,7 @@ I felt the need to have automated order generator, that will send the generated 
 So here it is, it works as intended, but still require some fixes and adjustments.
 I learned a lot while doing this project and hope to learn even more in the future.
 The project is for study purpose only and is not meant to be used by multiple users flooding your kafka endpoint.
-Project is written in **Golang**, deploy in **Docker**, **Kafka**, ZooKeeper and Kafka-UI will be deployed as well.
+Project is written in Golang, deploy in Docker, Kafka, ZooKeeper and Kafka-UI will be deployed as well.
 
 <h2> 🙈 INFO: </h2>
 🔧 Important❗project is still in development 🔧

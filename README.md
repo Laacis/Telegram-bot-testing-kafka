@@ -32,5 +32,9 @@ docker-compose -f docker-compose-nodb.yml up -d
 //to deploy with two databases(not recommended)
 docker-compose up -d
 ```
-<h2> 😮 STATS: </h2>
-[![project stats](https://skillicons.dev/icons?i=go,docker,kafka)](https://skillicons.dev)
+<h2> 😮 PLANNED CHANGES: </h2>
+
+- [ ] Extract order generation logic into separate service
+- [ ] make order service only store and forward orders
+- [ ] complete test coverage 
+

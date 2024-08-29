@@ -38,4 +38,5 @@ Important: before deployment, update your .env files.
 - [ ] Extract order generation logic into separate service
 - [ ] make order service only store and forward orders
 - [ ] complete test coverage 
+- [ ] implement JSON messages instead of text on API communication (//TODO)
 

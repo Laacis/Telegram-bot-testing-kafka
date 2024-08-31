@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -64,9 +65,10 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 				response, err := cmd.Execute(httpClient)
 				if err != nil {
 					log.Printf("Error handling response: %v", err)
-					response = "An error occurred while handling your request"
+					msg.Text = "An error occurred while handling your request"
+				} else {
+					msg.Text = responseMessage(err, response)
 				}
-				msg.Text = response
 			} else {
 				str := fmt.Sprintf("Unknown cmd %s! I understand:\n /producerUp \n/producerDown \n/producerStatus \n/generate X \n/send X.", commandString)
 				msg.Text = str
@@ -77,6 +79,21 @@ func updateHandler(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI, cfg *c
 			log.Panic(err)
 		}
 	}
+}
+
+func responseMessage(err error, response []byte) string {
+	var data interface{}
+	var message string
+	err = json.Unmarshal(response, &data)
+	if err != nil {
+		log.Fatalf("error unmarshalling JSON: %v", err)
+	}
+	if d, ok := data.(map[string]interface{}); ok {
+		if m, ok := d["Message"].(string); ok {
+			message = m
+		}
+	}
+	return message
 }
 
 func extractArgs(update tgbotapi.Update) (string, int, error) {

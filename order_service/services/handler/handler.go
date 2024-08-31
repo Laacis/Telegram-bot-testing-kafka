@@ -24,6 +24,7 @@ var useInMemory bool
 type Destination = models.Destination
 type Product = models.Product
 type Order = models.Order
+type Response = models.Response
 
 type Handler struct {
 	Storage      *inmemory.Queue[Order]
@@ -64,8 +65,12 @@ func (h *Handler) GenerateOrdersHandler(writer http.ResponseWriter, request *htt
 			counter++
 		}
 	}
-	finalStr := fmt.Sprintf("Report: %d orders generated", counter)
-	writer.Write([]byte(finalStr))
+	response := Response{
+		ResponseCode: http.StatusOK,
+		Message:      fmt.Sprintf("Report: %d orders generated", counter),
+	}
+	marshalResponse, _ := json.Marshal(&response)
+	writer.Write(marshalResponse)
 }
 
 func (h *Handler) SendOrdersHandler(writer http.ResponseWriter, request *http.Request) {
@@ -101,9 +106,12 @@ func (h *Handler) SendOrdersHandler(writer http.ResponseWriter, request *http.Re
 			return
 		}
 	}
-
-	f := fmt.Sprintf("Report: successfully sent %d orders", counter)
-	writer.Write([]byte(f))
+	response := Response{
+		ResponseCode: http.StatusOK,
+		Message:      fmt.Sprintf("Report: successfully sent %d orders", counter),
+	}
+	f, _ := json.Marshal(&response)
+	writer.Write(f)
 }
 
 func firstArgument(writer http.ResponseWriter, request *http.Request) (int, bool) {

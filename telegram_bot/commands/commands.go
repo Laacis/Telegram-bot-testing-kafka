@@ -36,21 +36,21 @@ func Create(command string, arg int, endpointGetter EndpointGetter) (*Command, e
 	return &result, nil
 }
 
-func (h *Command) Execute(c HTTPClient) (string, error) {
+func (h *Command) Execute(c HTTPClient) ([]byte, error) {
 	response, err := c.Get(h.endpoint)
 	if err != nil {
-		return "", fmt.Errorf("failed to perform GET request to %s: %w", h.endpoint, err)
+		return nil, fmt.Errorf("failed to perform GET request to %s: %w", h.endpoint, err)
 	}
 	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return "", fmt.Errorf("HTTP request failed with status code %d", response.StatusCode)
+		return nil, fmt.Errorf("HTTP request failed with status code %d", response.StatusCode)
 	}
 
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body from %s: %w", h.endpoint, err)
+		return nil, fmt.Errorf("failed to read response body from %s: %w", h.endpoint, err)
 	}
 
-	return string(data), nil
+	return data, nil
 }

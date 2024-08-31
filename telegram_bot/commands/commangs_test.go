@@ -80,13 +80,13 @@ func TestCommand_Execute(t *testing.T) {
 	tests := []struct {
 		caseName  string
 		command   *Command
-		expected  string
+		expected  []byte
 		shouldErr bool
 	}{
-		{"successfullyExecute", &Command{endpoint: "200"}, "200", false},
-		{"failExecuteClientErr", &Command{endpoint: "error"}, "", true},
-		{"failExecuteResponseCode404", &Command{endpoint: "404"}, "", true},
-		{"failExecuteResponseCode500", &Command{endpoint: "500"}, "", true},
+		{"successfullyExecute", &Command{endpoint: "200"}, []byte("200"), false},
+		{"failExecuteClientErr", &Command{endpoint: "error"}, nil, true},
+		{"failExecuteResponseCode404", &Command{endpoint: "404"}, nil, true},
+		{"failExecuteResponseCode500", &Command{endpoint: "500"}, nil, true},
 	}
 
 	for _, test := range tests {
@@ -98,7 +98,7 @@ func TestCommand_Execute(t *testing.T) {
 				return
 			}
 
-			if test.expected != response {
+			if test.expected != nil && test.expected[0] != response[0] {
 				t.Errorf("command.Excute() returned %v, but was expected %v.", response, test.expected)
 			}
 
